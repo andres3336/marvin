@@ -1,33 +1,40 @@
-import { APP_NAME, CACHE_KEY, CSV_URL, THEME_KEY } from './config.js';
+import {
+  APP_NAME,
+  APP_VERSION,
+  CACHE_KEY,
+  CSV_URL,
+  CSV_URL_KEY,
+  THEME_KEY,
+} from './config.js';
 import { parseTransactions } from './csv.js';
 import {
   formatColones,
+  formatDayMonth,
   formatMonthHeading,
   formatNumber,
-  formatShortDate,
-  formatTime,
   monthKey,
-  normalizeText,
   relativeTime,
 } from './format.js';
 
 const PAGE_SIZE = 60;
 const REFRESH_AFTER_MS = 5 * 60 * 1000;
-const SEARCH_DELAY_MS = 140;
+
+let csvUrl = readCsvUrl();
+let currentController = null;
+let requestToken = 0;
+let toastTimer = 0;
+let deferredPrompt = null;
 
 const state = {
   all: [],
   fetchedAt: 0,
   status: 'loading', // loading | cached | ready | offline | stale | error
   loading: false,
-  search: '',
-  merchant: '',
   visible: PAGE_SIZE,
   online: navigator.onLine,
 };
 
 const els = {
-  totalLabel: document.getElementById('total-label'),
   totalAmount: document.getElementById('total-amount'),
   summaryCount: document.getElementById('summary-count'),
   summarySpent: document.getElementById('summary-spent'),
@@ -36,10 +43,6 @@ const els = {
   statusText: document.getElementById('status-text'),
   transactions: document.getElementById('transactions'),
   resultsCount: document.getElementById('results-count'),
-  txSubtitle: document.getElementById('tx-subtitle'),
-  search: document.getElementById('filter-search'),
-  merchant: document.getElementById('filter-merchant'),
-  clearFilters: document.getElementById('clear-filters'),
   loadMore: document.getElementById('load-more'),
   empty: document.getElementById('empty-state'),
   emptyIcon: document.getElementById('empty-icon'),
@@ -49,22 +52,43 @@ const els = {
   refreshBtn: document.getElementById('refresh-btn'),
   themeBtn: document.getElementById('theme-btn'),
   installBtn: document.getElementById('install-btn'),
+  settingsBtn: document.getElementById('settings-btn'),
+  settingsDialog: document.getElementById('settings-dialog'),
+  settingsForm: document.getElementById('settings-form'),
+  settingsUrl: document.getElementById('settings-url'),
+  settingsClose: document.getElementById('settings-close'),
+  settingsDefault: document.getElementById('settings-default'),
+  settingsError: document.getElementById('settings-error'),
   toast: document.getElementById('toast'),
 };
 
 const EMPTY_ICONS = {
-  search:
-    '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>',
   offline:
     '<svg viewBox="0 0 24 24"><path d="M3 3l18 18M8.5 8.5A7 7 0 0 1 18 10m-9.5 6a3 3 0 0 1 4.2 0M5 5a12 12 0 0 0-2 1.5M19 6.5A12 12 0 0 1 21 8M2 9a17 17 0 0 1 4-2.5M18 6.5A17 17 0 0 1 22 9"/></svg>',
   inbox:
     '<svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M4 14h4l2 3h4l2-3h4"/></svg>',
 };
 
-let searchTimer = 0;
-let toastTimer = 0;
-let deferredPrompt = null;
-let emptyActionKind = null;
+/* ------------------------------------------------------------- data source */
+
+function isHttpUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function readCsvUrl() {
+  try {
+    const saved = localStorage.getItem(CSV_URL_KEY);
+    if (saved && isHttpUrl(saved)) return saved;
+  } catch {
+    /* storage can be blocked */
+  }
+  return CSV_URL;
+}
 
 /* ------------------------------------------------------------------ theme */
 
@@ -78,7 +102,10 @@ function storedTheme() {
 }
 
 function preferredTheme() {
-  return storedTheme() ?? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  return (
+    storedTheme() ??
+    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+  );
 }
 
 function applyTheme(theme, persist = true) {
@@ -95,17 +122,17 @@ function applyTheme(theme, persist = true) {
   els.themeBtn.setAttribute('aria-label', label);
   els.themeBtn.title = label;
 
-  const meta = document.querySelector('meta[name="theme-color"]');
-  meta?.setAttribute('content', theme === 'dark' ? '#07110f' : '#073c35');
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute('content', theme === 'dark' ? '#050b14' : '#063a75');
 }
 
 /* ------------------------------------------------------------------ cache */
 
-function prepareTransactions(transactions) {
-  return transactions.map((transaction) => ({
-    ...transaction,
-    searchText: normalizeText(transaction.merchant),
-  }));
+function sortByDate(transactions) {
+  return transactions
+    .slice()
+    .sort((a, b) => b.date.getTime() - a.date.getTime() || a.index - b.index);
 }
 
 function loadCache() {
@@ -114,7 +141,9 @@ function loadCache() {
     if (!raw) return false;
 
     const cached = JSON.parse(raw);
-    if (!cached || !Array.isArray(cached.transactions)) return false;
+    if (!cached || cached.url !== csvUrl || !Array.isArray(cached.transactions)) {
+      return false;
+    }
 
     const transactions = cached.transactions
       .map((item, index) => {
@@ -133,7 +162,7 @@ function loadCache() {
 
     if (transactions.length === 0) return false;
 
-    state.all = prepareTransactions(transactions);
+    state.all = sortByDate(transactions);
     state.fetchedAt = Number(cached.fetchedAt) || 0;
     state.status = 'cached';
     return true;
@@ -148,6 +177,7 @@ function saveCache() {
       CACHE_KEY,
       JSON.stringify({
         version: 1,
+        url: csvUrl,
         fetchedAt: state.fetchedAt,
         transactions: state.all.map((transaction) => ({
           id: transaction.id,
@@ -166,32 +196,43 @@ function saveCache() {
 /* ------------------------------------------------------------------- data */
 
 async function loadData({ announce = false } = {}) {
-  if (state.loading) return;
+  const token = ++requestToken;
+  currentController?.abort();
+
+  const controller = new AbortController();
+  currentController = controller;
+  const requestedUrl = csvUrl;
+  let timedOut = false;
 
   state.loading = true;
   state.status = 'loading';
   setLoading(true);
   renderStatus();
 
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 15_000);
+  const timeout = window.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, 15_000);
 
   try {
-    const response = await fetch(CSV_URL, {
+    const response = await fetch(requestedUrl, {
       cache: 'no-store',
       mode: 'cors',
       signal: controller.signal,
     });
 
+    if (token !== requestToken) return;
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     const servedFromCache = response.headers.get('X-Marvin-Cache') === 'hit';
     const transactions = parseTransactions(await response.text());
+
+    if (token !== requestToken) return;
     if (transactions.length === 0) {
       throw new Error('El documento no contiene movimientos válidos');
     }
 
-    state.all = prepareTransactions(transactions);
+    state.all = sortByDate(transactions);
     state.online = navigator.onLine;
 
     // The service worker can answer from its CSV cache. Keep the previous
@@ -205,12 +246,14 @@ async function loadData({ announce = false } = {}) {
     }
 
     state.visible = PAGE_SIZE;
-
     saveCache();
     renderAll();
 
     if (announce) toast('Datos actualizados');
   } catch (error) {
+    if (token !== requestToken) return;
+    if (error.name === 'AbortError' && !timedOut) return;
+
     console.error(`[${APP_NAME}] No se pudieron cargar los datos`, error);
 
     if (state.all.length > 0) {
@@ -224,8 +267,11 @@ async function loadData({ announce = false } = {}) {
     }
   } finally {
     window.clearTimeout(timeout);
-    state.loading = false;
-    setLoading(false);
+    if (token === requestToken) {
+      state.loading = false;
+      currentController = null;
+      setLoading(false);
+    }
   }
 }
 
@@ -235,126 +281,67 @@ function setLoading(isLoading) {
   els.refreshBtn.setAttribute('aria-busy', String(isLoading));
 }
 
-/* --------------------------------------------------------------- filtering */
+function resetData() {
+  state.all = [];
+  state.fetchedAt = 0;
+  state.status = 'loading';
+  state.visible = PAGE_SIZE;
 
-function isFiltering() {
-  return Boolean(state.search || state.merchant);
-}
+  try {
+    localStorage.removeItem(CACHE_KEY);
+  } catch {
+    /* storage can be blocked */
+  }
 
-function filteredTransactions() {
-  const query = normalizeText(state.search);
-
-  return state.all
-    .filter((transaction) => {
-      if (state.merchant && transaction.merchant !== state.merchant) return false;
-      if (query && !transaction.searchText.includes(query)) return false;
-      return true;
-    })
-    .sort((a, b) => b.date.getTime() - a.date.getTime() || a.index - b.index);
+  els.totalAmount.textContent = formatColones(0);
+  els.summarySpent.textContent = formatColones(0);
+  els.summaryCredits.textContent = formatColones(0);
+  els.summaryCount.textContent = '0';
+  els.resultsCount.textContent = '0';
+  els.loadMore.hidden = true;
+  els.transactions.hidden = false;
+  els.transactions.replaceChildren(createSkeletons());
+  hideEmpty();
+  renderStatus();
 }
 
 /* ---------------------------------------------------------------- rendering */
 
 function renderAll() {
   if (!state.all.length) return;
-  renderMerchantOptions();
   renderSummary();
   renderTransactions();
-  renderFilters();
   renderStatus();
 }
 
-function renderResults() {
-  if (!state.all.length) return;
-  renderMerchantOptions();
-  renderSummary();
-  renderTransactions();
-  renderFilters();
-}
-
 function renderSummary() {
-  const transactions = filteredTransactions();
-  const total = transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
-  const spent = transactions.reduce(
+  const total = state.all.reduce((sum, transaction) => sum + transaction.amount, 0);
+  const spent = state.all.reduce(
     (sum, transaction) => sum + (transaction.amount > 0 ? transaction.amount : 0),
     0,
   );
   const credits = Math.abs(
-    transactions.reduce(
+    state.all.reduce(
       (sum, transaction) => sum + (transaction.amount < 0 ? transaction.amount : 0),
       0,
     ),
   );
 
-  els.totalLabel.textContent = isFiltering() ? 'Total filtrado' : 'Total neto';
   els.totalAmount.textContent = formatColones(total);
   els.summarySpent.textContent = formatColones(spent);
   els.summaryCredits.textContent = credits > 0 ? `+${formatColones(credits)}` : formatColones(0);
-  els.summaryCount.textContent = formatNumber(transactions.length);
-  els.resultsCount.textContent = formatNumber(transactions.length);
-  els.txSubtitle.textContent = isFiltering() ? 'Resultados filtrados' : 'Todos los movimientos';
-}
-
-function renderMerchantOptions() {
-  const counts = new Map();
-  for (const transaction of state.all) {
-    counts.set(transaction.merchant, (counts.get(transaction.merchant) ?? 0) + 1);
-  }
-
-  const merchants = [...counts.entries()].sort(([a], [b]) => a.localeCompare(b, 'es'));
-  const fragment = document.createDocumentFragment();
-
-  const all = document.createElement('option');
-  all.value = '';
-  all.textContent = 'Todos los comercios';
-  fragment.append(all);
-
-  for (const [merchant, count] of merchants) {
-    const option = document.createElement('option');
-    option.value = merchant;
-    option.textContent = `${merchant} (${formatNumber(count)})`;
-    fragment.append(option);
-  }
-
-  const exists = merchants.some(([merchant]) => merchant === state.merchant);
-  if (!exists) state.merchant = '';
-
-  els.merchant.replaceChildren(fragment);
-  els.merchant.value = state.merchant;
+  els.summaryCount.textContent = formatNumber(state.all.length);
+  els.resultsCount.textContent = formatNumber(state.all.length);
 }
 
 function renderTransactions() {
   if (!state.all.length) return;
 
-  const transactions = filteredTransactions();
-  const visible = transactions.slice(0, state.visible);
-  const remaining = Math.max(0, transactions.length - state.visible);
+  const visible = state.all.slice(0, state.visible);
+  const remaining = Math.max(0, state.all.length - state.visible);
 
   els.loadMore.hidden = remaining === 0;
   els.loadMore.textContent = `Mostrar más (${formatNumber(remaining)})`;
-
-  if (transactions.length === 0) {
-    els.transactions.replaceChildren();
-    els.transactions.hidden = true;
-    showEmpty({
-      kind: 'search',
-      title: 'Sin resultados',
-      text: 'No hay movimientos que coincidan con los filtros actuales.',
-      action: 'Limpiar filtros',
-      actionKind: 'clear',
-    });
-    return;
-  }
-
-  hideEmpty();
-  els.transactions.hidden = false;
-
-  // Monthly totals are computed from the filtered set, not only the loaded page.
-  const monthTotals = new Map();
-  for (const transaction of transactions) {
-    const key = monthKey(transaction.date);
-    monthTotals.set(key, (monthTotals.get(key) ?? 0) + transaction.amount);
-  }
 
   const wrap = document.createElement('div');
   wrap.className = 'table-wrap';
@@ -396,21 +383,11 @@ function renderTransactions() {
       const cell = document.createElement('td');
       cell.colSpan = 3;
 
-      const inner = document.createElement('div');
-      inner.className = 'month-divider-inner';
-
       const label = document.createElement('span');
       label.className = 'month-divider-label';
       label.textContent = formatMonthHeading(key);
 
-      const monthTotal = monthTotals.get(key) ?? 0;
-      const total = document.createElement('span');
-      total.className = 'month-divider-total';
-      if (monthTotal < 0) total.classList.add('is-credit');
-      total.textContent = formatColones(monthTotal);
-
-      inner.append(label, total);
-      cell.append(inner);
+      cell.append(label);
       divider.append(cell);
       tbody.append(divider);
       currentMonth = key;
@@ -431,16 +408,7 @@ function createTransactionRow(transaction) {
 
   const dateCell = document.createElement('td');
   dateCell.className = 'tx-date';
-
-  const day = document.createElement('span');
-  day.className = 'tx-date-day';
-  day.textContent = formatShortDate(transaction.date);
-
-  const time = document.createElement('span');
-  time.className = 'tx-time';
-  time.textContent = formatTime(transaction.date);
-
-  dateCell.append(day, time);
+  dateCell.textContent = formatDayMonth(transaction.date);
 
   const merchantCell = document.createElement('td');
   merchantCell.className = 'tx-merchant';
@@ -453,10 +421,6 @@ function createTransactionRow(transaction) {
 
   row.append(dateCell, merchantCell, amountCell);
   return row;
-}
-
-function renderFilters() {
-  els.clearFilters.hidden = !isFiltering();
 }
 
 function renderStatus() {
@@ -479,6 +443,16 @@ function renderStatus() {
   els.statusText.textContent = labels[state.status] ?? '';
 }
 
+function createSkeletons() {
+  const fragment = document.createDocumentFragment();
+  for (let index = 0; index < 3; index += 1) {
+    const row = document.createElement('div');
+    row.className = 'skeleton skeleton-row';
+    fragment.append(row);
+  }
+  return fragment;
+}
+
 function renderLoadError() {
   els.transactions.replaceChildren();
   els.transactions.hidden = true;
@@ -487,14 +461,13 @@ function renderLoadError() {
   showEmpty({
     kind: 'offline',
     title: 'No se pudieron cargar los datos',
-    text: 'Revise su conexión a internet e intente de nuevo. La última copia guardada se conserva en este dispositivo.',
+    text: 'Revise la conexión o la URL del CSV en Ajustes e intente de nuevo.',
     action: 'Reintentar',
-    actionKind: 'retry',
   });
   renderStatus();
 }
 
-function showEmpty({ kind, title, text, action, actionKind }) {
+function showEmpty({ kind, title, text, action }) {
   els.empty.hidden = false;
   els.emptyIcon.innerHTML = EMPTY_ICONS[kind] ?? EMPTY_ICONS.inbox;
   els.emptyTitle.textContent = title;
@@ -503,29 +476,69 @@ function showEmpty({ kind, title, text, action, actionKind }) {
   if (action) {
     els.emptyAction.hidden = false;
     els.emptyAction.textContent = action;
-    emptyActionKind = actionKind ?? null;
   } else {
     els.emptyAction.hidden = true;
-    emptyActionKind = null;
   }
 }
 
 function hideEmpty() {
   els.empty.hidden = true;
-  emptyActionKind = null;
+}
+
+/* ---------------------------------------------------------------- settings */
+
+function openSettings() {
+  els.settingsUrl.value = csvUrl;
+  els.settingsError.hidden = true;
+  els.settingsError.textContent = '';
+
+  if (!els.settingsDialog.open) els.settingsDialog.showModal();
+
+  window.requestAnimationFrame(() => {
+    els.settingsUrl.focus();
+    els.settingsUrl.select();
+  });
+}
+
+function closeSettings() {
+  if (els.settingsDialog.open) els.settingsDialog.close();
+}
+
+function showSettingsError(message) {
+  els.settingsError.textContent = message;
+  els.settingsError.hidden = false;
+}
+
+function saveSettings(event) {
+  event.preventDefault();
+
+  const nextUrl = els.settingsUrl.value.trim();
+  if (!isHttpUrl(nextUrl)) {
+    showSettingsError('Ingrese una URL http(s) válida.');
+    els.settingsUrl.focus();
+    return;
+  }
+
+  if (nextUrl === csvUrl) {
+    closeSettings();
+    toast('La fuente no cambió.');
+    return;
+  }
+
+  try {
+    localStorage.setItem(CSV_URL_KEY, nextUrl);
+  } catch {
+    /* use the URL for this session even if storage is blocked */
+  }
+
+  csvUrl = nextUrl;
+  closeSettings();
+  resetData();
+  toast('Fuente actualizada. Cargando datos…');
+  loadData({ announce: false });
 }
 
 /* ------------------------------------------------------------------ events */
-
-function clearFilters() {
-  state.search = '';
-  state.merchant = '';
-  state.visible = PAGE_SIZE;
-  els.search.value = '';
-  els.merchant.value = '';
-  hideEmpty();
-  renderResults();
-}
 
 function toast(message, duration = 3800) {
   els.toast.textContent = message;
@@ -542,33 +555,27 @@ function bindEvents() {
 
   els.refreshBtn.addEventListener('click', () => loadData({ announce: true }));
 
-  els.search.addEventListener('input', (event) => {
-    const value = event.target.value;
-    window.clearTimeout(searchTimer);
-    searchTimer = window.setTimeout(() => {
-      state.search = value;
-      state.visible = PAGE_SIZE;
-      renderResults();
-    }, SEARCH_DELAY_MS);
+  els.settingsBtn.addEventListener('click', openSettings);
+  els.settingsClose.addEventListener('click', closeSettings);
+  els.settingsForm.addEventListener('submit', saveSettings);
+
+  els.settingsDefault.addEventListener('click', () => {
+    els.settingsUrl.value = CSV_URL;
+    els.settingsError.hidden = true;
+    els.settingsUrl.focus();
+    els.settingsUrl.select();
   });
 
-  els.merchant.addEventListener('change', (event) => {
-    state.merchant = event.target.value;
-    state.visible = PAGE_SIZE;
-    renderResults();
+  els.settingsDialog.addEventListener('click', (event) => {
+    if (event.target === els.settingsDialog) closeSettings();
   });
-
-  els.clearFilters.addEventListener('click', clearFilters);
 
   els.loadMore.addEventListener('click', () => {
     state.visible += PAGE_SIZE;
     renderTransactions();
   });
 
-  els.emptyAction.addEventListener('click', () => {
-    if (emptyActionKind === 'clear') clearFilters();
-    if (emptyActionKind === 'retry') loadData({ announce: true });
-  });
+  els.emptyAction.addEventListener('click', () => loadData({ announce: true }));
 
   window.addEventListener('online', () => {
     state.online = true;
@@ -608,7 +615,6 @@ function setupInstallButton() {
     return;
   }
 
-  // Chrome/Edge expose a native prompt; other browsers get instructions.
   els.installBtn.hidden = false;
 
   window.addEventListener('beforeinstallprompt', (event) => {
@@ -676,8 +682,15 @@ async function registerServiceWorker() {
 
 /* ------------------------------------------------------------------- boot */
 
+function fillVersion() {
+  document.querySelectorAll('[data-version]').forEach((element) => {
+    element.textContent = APP_VERSION;
+  });
+}
+
 function init() {
   applyTheme(preferredTheme(), false);
+  fillVersion();
   bindEvents();
   setupInstallButton();
   registerServiceWorker();

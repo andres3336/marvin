@@ -48,6 +48,11 @@ const SHORT_DATE_FORMAT = new Intl.DateTimeFormat('es-CR', {
   year: 'numeric',
 });
 
+const DAY_MONTH_FORMAT = new Intl.DateTimeFormat('es-CR', {
+  day: 'numeric',
+  month: 'short',
+});
+
 function capitalize(text) {
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
 }
@@ -75,6 +80,11 @@ export function formatMonthHeading(key) {
 
 export function formatShortDate(date) {
   return SHORT_DATE_FORMAT.format(date);
+}
+
+/** "15 ene" — the month divider already carries the year. */
+export function formatDayMonth(date) {
+  return DAY_MONTH_FORMAT.format(date);
 }
 
 /** Lowercase, accent-insensitive text used for searching. */

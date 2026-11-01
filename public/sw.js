@@ -10,10 +10,9 @@
  * Bump VERSION whenever the precache list changes.
  */
 
-const VERSION = 'v1.1.1';
+const VERSION = 'v1.2.0';
 const SHELL_CACHE = `marvin-shell-${VERSION}`;
-const DATA_CACHE = 'marvin-data-v2';
-const DATA_HOST = 'docs.google.com';
+const DATA_CACHE = 'marvin-data-v3';
 
 const SHELL_ASSETS = [
   './',
@@ -59,13 +58,15 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
-  if (request.mode === 'navigate' && url.origin === self.location.origin) {
-    event.respondWith(handleNavigation(request));
+  const isCsv = url.pathname.endsWith('.csv') || url.searchParams.get('output') === 'csv';
+
+  if (isCsv) {
+    event.respondWith(handleData(request));
     return;
   }
 
-  if (url.hostname === DATA_HOST) {
-    event.respondWith(handleData(request));
+  if (request.mode === 'navigate' && url.origin === self.location.origin) {
+    event.respondWith(handleNavigation(request));
     return;
   }
 

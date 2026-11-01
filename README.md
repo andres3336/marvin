@@ -1,16 +1,16 @@
 # Marvin
 
-A small, installable expense dashboard for Costa Rican colones. Vanilla JavaScript, no framework and no build step. The app reads a read-only published Google Sheet and deploys as a static site to GitHub Pages.
+A small, installable BCR expense dashboard for Costa Rican colones. Vanilla JavaScript, no framework and no build step. The app reads a read-only published Google Sheet and is currently served from a local/internal Node server.
 
 ## What it does
 
-- Fetches the published CSV and shows the net total, spending, credits and a transaction table.
-- Groups the table by month with a divider row; no month filter.
-- Filters by merchant and free-text search.
+- Shows **Disponible** in a sticky header, with Gastos, SINPE and Movimientos separated below.
+- Renders a single-line transaction table grouped by month. Month dividers have no subtotals.
 - Highlights credit rows in green (SINPE transfers and other negative amounts).
 - Formats every amount as whole colones with comma thousands separators, rounding up: `₡1,234,567`.
+- Lets you change the CSV source from the **Ajustes** panel; the URL is stored on the device.
 - Works offline: the app shell is cached by a service worker, the CSV has a cache fallback and the last successful dataset is stored in `localStorage`.
-- Installable as a PWA with an offline-ready manifest and maskable icons.
+- Installable as a PWA with BCR-blue icons and maskable artwork.
 - Follows the system light/dark theme, with a manual toggle.
 
 ## Money rules
@@ -26,7 +26,7 @@ The formatting lives in [`public/assets/format.js`](public/assets/format.js), an
 
 ## Data source
 
-The published CSV URL is configured in [`public/assets/config.js`](public/assets/config.js):
+The default URL is configured in [`public/assets/config.js`](public/assets/config.js), and it can be replaced from the **Ajustes** button without rebuilding:
 
 ```js
 export const CSV_URL =
@@ -35,7 +35,7 @@ export const CSV_URL =
 
 Expected columns: `Fecha`, `Comercio`, `Monto`. A description column is not required and is ignored. Column order does not matter because the header is detected by name. The date format exported by Google Sheets (`01/15/2026 01:05 PM`) is supported, along with ISO and day-first dates.
 
-Amounts may be positive or negative. Credits can be exported as negative numbers (`-15,000`) or in accounting parentheses (`(15,000)`), and both are parsed as credits and shown in green.
+Amounts may be positive or negative. Credits can be exported as negative numbers (`-15,000`) or in accounting parentheses (`(15,000)`), and both are parsed as credits and shown in green. The **Disponible** figure is the net sum: gastos minus SINPE credits.
 
 > **Privacy:** publishing a Google Sheet makes the CSV readable by anyone with the link. Do not publish data you want to keep private. The app itself only reads and never writes to the sheet.
 
@@ -47,10 +47,10 @@ Requires Node.js 20 or newer.
 npm start
 ```
 
-Open <http://127.0.0.1:5173>. To test from a phone on the same network:
+Open <http://127.0.0.1:5173>. To serve it to other devices on the local network:
 
 ```bash
-HOST=0.0.0.0 npm start
+npm run start:lan
 ```
 
 The local Node server serves only the `public/` directory. There is no build step, no dependency install and no bundler.
@@ -61,18 +61,13 @@ The local Node server serves only the `public/` directory. There is no build ste
 npm test
 ```
 
-The suite covers CSV parsing, quoted fields, header detection, date formats, amount formats, rounding, formatting and search normalization.
+The suite covers CSV parsing, quoted fields, header detection, date formats, amount formats, rounding and formatting.
 
-## Deploying to GitHub Pages
+## Deployment
 
-The workflow at [`.github/workflows/pages.yml`](.github/workflows/pages.yml) publishes `public/` on every push to `main`:
+Deployment is intentionally paused while the app runs from the internal server. The GitHub Pages workflow at [`.github/workflows/pages.yml`](.github/workflows/pages.yml) is manual-only for now.
 
-1. In the repository, open **Settings → Pages**.
-2. Set **Source** to **GitHub Actions**.
-3. Push to `main` (or run the workflow manually).
-4. The site will be available at `https://andres3336.github.io/marvin/`.
-
-All paths in the app are relative, so it works from the `/marvin/` subpath without changes. `public/.nojekyll` keeps Jekyll out of the way.
+When it is time to deploy again, restore the `push` trigger, push to `main`, and run the workflow. All paths are relative, so it works from the `/marvin/` subpath without changes. `public/.nojekyll` keeps Jekyll out of the way.
 
 ## Project structure
 
@@ -82,12 +77,12 @@ public/                 Static site (the only folder deployed)
   manifest.webmanifest
   sw.js                 Service worker: shell + CSV caching
   assets/
-    app.js              UI, state, fetch, install and theme logic
+    app.js              UI, settings, fetch, install and theme logic
     csv.js              CSV, date and amount parsing
     format.js           Colones, dates and relative time
-    config.js           CSV URL and storage keys
+    config.js           Default CSV URL, version and storage keys
     styles.css
-    icons/              PWA and favicon icons
+    icons/              BCR-blue PWA and favicon icons
 test/                   Node test suite
 tools/generate-icons.py Icon generator (Pillow)
 server.mjs              Zero-dependency local static server

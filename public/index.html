@@ -3,12 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Marvin · Gastos en colones</title>
+    <title>Marvin · Gastos BCR</title>
     <meta
       name="description"
-      content="Marvin es un registro de gastos en colones costarricenses. Funciona sin conexión y se puede instalar como aplicación."
+      content="Marvin es un registro de gastos BCR en colones costarricenses. Funciona sin conexión y se puede instalar como aplicación."
     />
-    <meta name="theme-color" content="#073c35" />
+    <meta name="theme-color" content="#063a75" />
     <meta name="color-scheme" content="light dark" />
     <meta name="robots" content="noindex, nofollow" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -24,8 +24,11 @@
           const system = window.matchMedia('(prefers-color-scheme: dark)').matches
             ? 'dark'
             : 'light';
-          document.documentElement.dataset.theme =
-            saved === 'light' || saved === 'dark' ? saved : system;
+          const theme = saved === 'light' || saved === 'dark' ? saved : system;
+          document.documentElement.dataset.theme = theme;
+          document
+            .querySelector('meta[name="theme-color"]')
+            ?.setAttribute('content', theme === 'dark' ? '#050b14' : '#063a75');
         } catch {
           /* storage can be blocked */
         }
@@ -44,10 +47,10 @@
     <header class="topbar">
       <div class="topbar-inner">
         <a class="brand" href="./" aria-label="Marvin, inicio">
-          <span class="brand-mark" aria-hidden="true">₡</span>
+          <span class="brand-mark" aria-hidden="true">BCR</span>
           <span class="brand-text">
             <h1>Marvin</h1>
-            <small>Gastos al día</small>
+            <small>Gastos BCR</small>
           </span>
         </a>
 
@@ -57,6 +60,21 @@
               <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" />
             </svg>
             <span>Instalar</span>
+          </button>
+
+          <button
+            type="button"
+            class="icon-btn"
+            id="settings-btn"
+            aria-label="Ajustes"
+            title="Ajustes"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"
+              />
+            </svg>
           </button>
 
           <button
@@ -88,104 +106,122 @@
           </button>
         </div>
       </div>
+
+      <div class="balance-bar">
+        <div class="balance-inner">
+          <span class="balance-label">Disponible</span>
+          <span class="balance-amount" id="total-amount">₡0</span>
+        </div>
+      </div>
     </header>
 
     <main class="page" id="contenido">
-      <section class="hero" aria-labelledby="total-label">
-        <div class="hero-content">
-          <p class="eyebrow" id="total-label">Total neto</p>
-          <p class="hero-amount" id="total-amount">₡0</p>
+      <section class="stats-card" aria-label="Resumen">
+        <dl class="stats">
+          <div>
+            <dt>Gastos</dt>
+            <dd id="summary-spent">₡0</dd>
+          </div>
+          <div>
+            <dt>SINPE</dt>
+            <dd id="summary-credits" class="is-credit">+₡0</dd>
+          </div>
+          <div>
+            <dt>Movimientos</dt>
+            <dd id="summary-count">0</dd>
+          </div>
+        </dl>
 
-          <dl class="hero-stats">
-            <div>
-              <dt>Gastos</dt>
-              <dd id="summary-spent">₡0</dd>
-            </div>
-            <div>
-              <dt>Créditos</dt>
-              <dd id="summary-credits" class="is-credit">+₡0</dd>
-            </div>
-            <div>
-              <dt>Movimientos</dt>
-              <dd id="summary-count">0</dd>
-            </div>
-          </dl>
-
-          <p class="status" id="status" aria-live="polite">
-            <span class="status-dot" aria-hidden="true"></span>
-            <span id="status-text">Cargando datos…</span>
-          </p>
-        </div>
-        <div class="hero-decoration" aria-hidden="true"></div>
+        <p class="status" id="status" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="status-text">Cargando datos…</span>
+        </p>
       </section>
 
-      <div class="dashboard">
-        <section class="card tx-card" aria-labelledby="tx-heading">
-          <div class="card-head">
-            <div>
-              <h2 id="tx-heading">Movimientos</h2>
-              <p id="tx-subtitle">Todos los movimientos</p>
-            </div>
-            <span class="count-pill" id="results-count">0</span>
-          </div>
+      <section class="card tx-card" aria-labelledby="tx-heading">
+        <div class="card-head">
+          <h2 id="tx-heading">Movimientos</h2>
+          <span class="count-pill" id="results-count">0</span>
+        </div>
 
-          <div class="filters">
-            <label class="field search-field">
-              <span class="sr-only">Buscar movimientos</span>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="11" cy="11" r="7" />
-                <path d="m16.5 16.5 4 4" />
-              </svg>
-              <input
-                id="filter-search"
-                type="search"
-                placeholder="Buscar comercio…"
-                autocomplete="off"
-                enterkeyhint="search"
-              />
-            </label>
+        <div class="transactions" id="transactions" aria-live="polite">
+          <div class="skeleton skeleton-row"></div>
+          <div class="skeleton skeleton-row"></div>
+          <div class="skeleton skeleton-row"></div>
+        </div>
 
-            <label class="field select-field">
-              <span class="sr-only">Filtrar por comercio</span>
-              <select id="filter-merchant">
-                <option value="">Todos los comercios</option>
-              </select>
-            </label>
+        <div class="empty" id="empty-state" hidden>
+          <span class="empty-icon" id="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z" />
+              <path d="M9 8h6M9 12h6" />
+            </svg>
+          </span>
+          <p class="empty-title" id="empty-title">Sin movimientos</p>
+          <p class="empty-text" id="empty-text"></p>
+          <button type="button" class="btn-primary" id="empty-action" hidden></button>
+        </div>
 
-            <button type="button" class="clear-filters" id="clear-filters" hidden>
-              Limpiar
-            </button>
-          </div>
-
-          <div class="transactions" id="transactions" aria-live="polite">
-            <div class="skeleton skeleton-row"></div>
-            <div class="skeleton skeleton-row"></div>
-            <div class="skeleton skeleton-row"></div>
-          </div>
-
-          <div class="empty" id="empty-state" hidden>
-            <span class="empty-icon" id="empty-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z" />
-                <path d="M9 8h6M9 12h6" />
-              </svg>
-            </span>
-            <p class="empty-title" id="empty-title">Sin movimientos</p>
-            <p class="empty-text" id="empty-text"></p>
-            <button type="button" class="btn-primary" id="empty-action" hidden></button>
-          </div>
-
-          <button type="button" class="btn-ghost" id="load-more" hidden>
-            Mostrar más
-          </button>
-        </section>
-      </div>
+        <button type="button" class="btn-ghost" id="load-more" hidden>
+          Mostrar más
+        </button>
+      </section>
     </main>
 
     <footer class="footer">
-      <p>Datos de solo lectura desde Google Sheets.</p>
-      <p>Colones costarricenses · Redondeo hacia arriba</p>
+      <p>v<span data-version></span></p>
     </footer>
+
+    <dialog class="settings-dialog" id="settings-dialog" aria-labelledby="settings-title">
+      <form class="settings-form" id="settings-form" novalidate>
+        <div class="settings-head">
+          <div>
+            <h2 id="settings-title">Ajustes</h2>
+            <p>Configure la fuente de datos del CSV.</p>
+          </div>
+          <button
+            type="button"
+            class="icon-btn"
+            id="settings-close"
+            aria-label="Cerrar ajustes"
+            title="Cerrar"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m6 6 12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+
+        <label class="settings-field" for="settings-url">
+          <span>URL del CSV publicado</span>
+          <input
+            id="settings-url"
+            name="csv-url"
+            type="url"
+            inputmode="url"
+            placeholder="https://…/output=csv"
+            autocomplete="off"
+            spellcheck="false"
+            required
+          />
+        </label>
+
+        <p class="settings-hint">
+          Pegue la URL publicada de Google Sheets. Debe terminar en
+          <code>output=csv</code>.
+        </p>
+        <p class="settings-error" id="settings-error" role="alert" hidden></p>
+
+        <div class="settings-actions">
+          <button type="button" class="btn-secondary" id="settings-default">
+            URL original
+          </button>
+          <button type="submit" class="btn-primary">Guardar</button>
+        </div>
+
+        <p class="settings-version">Marvin v<span data-version></span></p>
+      </form>
+    </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 

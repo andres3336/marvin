@@ -9,6 +9,7 @@ import {
 } from '../public/assets/csv.js';
 import {
   formatColones,
+  formatDayMonth,
   formatMonthHeading,
   formatNumber,
   monthKey,
@@ -147,6 +148,7 @@ test('dates produce local month keys', () => {
   assert.equal(monthKey(new Date(2026, 0, 15)), '2026-01');
   assert.equal(monthKey(new Date(2026, 11, 31)), '2026-12');
   assert.equal(formatMonthHeading('2026-01'), 'Enero 2026');
+  assert.equal(formatDayMonth(new Date(2026, 0, 15)), '15 ene');
 });
 
 test('normalizeText ignores accents and case', () => {

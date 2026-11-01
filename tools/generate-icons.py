@@ -13,9 +13,9 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "public" / "assets" / "icons"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
-TOP = (17, 128, 119)
-BOTTOM = (4, 55, 48)
-GOLD = (216, 166, 32)
+TOP = (12, 80, 156)
+BOTTOM = (3, 39, 82)
+GOLD = (255, 205, 0)
 WHITE = (255, 255, 255, 255)
 SS = 4  # supersampling
 
@@ -61,7 +61,7 @@ def build(size, *, radius_ratio, glyph_ratio, full_bleed, filename):
 
     draw = ImageDraw.Draw(image)
     font = ImageFont.truetype(FONT, int(canvas * glyph_ratio))
-    text = "₡"
+    text = "BCR"
     bbox = draw.textbbox((0, 0), text, font=font)
     text_width = bbox[2] - bbox[0]
     text_height = bbox[3] - bbox[1]
@@ -70,7 +70,7 @@ def build(size, *, radius_ratio, glyph_ratio, full_bleed, filename):
     draw.text((x, y), text, font=font, fill=WHITE)
 
     # Small gold underline, like a ledger rule.
-    line_width = canvas * 0.2
+    line_width = canvas * 0.28
     line_height = max(2, int(canvas * 0.018))
     line_x = (canvas - line_width) / 2
     glyph_bottom = y + bbox[1] + text_height
@@ -88,16 +88,16 @@ def build(size, *, radius_ratio, glyph_ratio, full_bleed, filename):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    build(192, radius_ratio=0.23, glyph_ratio=0.6, full_bleed=False, filename="icon-192.png")
-    build(512, radius_ratio=0.23, glyph_ratio=0.6, full_bleed=False, filename="icon-512.png")
+    build(192, radius_ratio=0.23, glyph_ratio=0.25, full_bleed=False, filename="icon-192.png")
+    build(512, radius_ratio=0.23, glyph_ratio=0.25, full_bleed=False, filename="icon-512.png")
     build(
         512,
         radius_ratio=0.23,
-        glyph_ratio=0.5,
+        glyph_ratio=0.21,
         full_bleed=True,
         filename="icon-maskable-512.png",
     )
-    build(180, radius_ratio=0.0, glyph_ratio=0.55, full_bleed=True, filename="apple-touch-icon.png")
+    build(180, radius_ratio=0.0, glyph_ratio=0.23, full_bleed=True, filename="apple-touch-icon.png")
 
     favicon = Image.open(OUT / "icon-192.png").resize((32, 32), Image.LANCZOS)
     favicon.save(OUT / "favicon-32.png", optimize=True)

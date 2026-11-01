@@ -1,6 +1,6 @@
 {
   "name": "marvin",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "PWA de gastos en colones costarricenses, servida estáticamente desde GitHub Pages.",
   "type": "module",
@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "node server.mjs",
+    "start:lan": "HOST=0.0.0.0 node server.mjs",
     "dev": "node server.mjs",
     "test": "node --test test/*.test.js",
     "icons": "python3 tools/generate-icons.py"
