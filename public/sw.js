@@ -10,7 +10,7 @@
  * Bump VERSION whenever the precache list changes.
  */
 
-const VERSION = 'v1.1.0';
+const VERSION = 'v1.1.1';
 const SHELL_CACHE = `marvin-shell-${VERSION}`;
 const DATA_CACHE = 'marvin-data-v2';
 const DATA_HOST = 'docs.google.com';
@@ -107,7 +107,22 @@ async function handleData(request) {
     return response;
   } catch {
     const cached = await cache.match(request);
-    if (cached) return cached;
+    if (cached) {
+      // Let the page know this response came from the offline cache.
+      const headers = new Headers(cached.headers);
+      headers.set('X-Marvin-Cache', 'hit');
+      const exposed = headers.get('Access-Control-Expose-Headers');
+      headers.set(
+        'Access-Control-Expose-Headers',
+        exposed ? `${exposed}, X-Marvin-Cache` : 'X-Marvin-Cache',
+      );
+
+      return new Response(cached.body, {
+        status: cached.status,
+        statusText: cached.statusText,
+        headers,
+      });
+    }
 
     return new Response('', {
       status: 503,

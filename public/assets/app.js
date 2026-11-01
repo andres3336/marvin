@@ -185,6 +185,7 @@ async function loadData({ announce = false } = {}) {
 
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
+    const servedFromCache = response.headers.get('X-Marvin-Cache') === 'hit';
     const transactions = parseTransactions(await response.text());
     if (transactions.length === 0) {
       throw new Error('El documento no contiene movimientos válidos');
@@ -193,13 +194,13 @@ async function loadData({ announce = false } = {}) {
     state.all = prepareTransactions(transactions);
     state.online = navigator.onLine;
 
-    // A service worker can answer from its cache while offline. Keep the
-    // previous timestamp in that case so "updated" stays honest.
-    if (state.online) {
+    // The service worker can answer from its CSV cache. Keep the previous
+    // timestamp in that case so "updated" stays honest.
+    if (state.online && !servedFromCache) {
       state.fetchedAt = Date.now();
       state.status = 'ready';
     } else {
-      state.status = 'offline';
+      state.status = state.online ? 'stale' : 'offline';
       if (!state.fetchedAt) state.fetchedAt = Date.now();
     }
 
