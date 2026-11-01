@@ -1,11 +1,10 @@
 import { APP_NAME, CACHE_KEY, CSV_URL, THEME_KEY } from './config.js';
 import { parseTransactions } from './csv.js';
 import {
-  dayKey,
   formatColones,
-  formatDay,
-  formatMonthKey,
+  formatMonthHeading,
   formatNumber,
+  formatShortDate,
   formatTime,
   monthKey,
   normalizeText,
@@ -23,7 +22,6 @@ const state = {
   loading: false,
   search: '',
   merchant: '',
-  month: '',
   visible: PAGE_SIZE,
   online: navigator.onLine,
 };
@@ -32,11 +30,10 @@ const els = {
   totalLabel: document.getElementById('total-label'),
   totalAmount: document.getElementById('total-amount'),
   summaryCount: document.getElementById('summary-count'),
-  summaryAverage: document.getElementById('summary-average'),
-  summaryMonths: document.getElementById('summary-months'),
+  summarySpent: document.getElementById('summary-spent'),
+  summaryCredits: document.getElementById('summary-credits'),
   status: document.getElementById('status'),
   statusText: document.getElementById('status-text'),
-  monthsList: document.getElementById('months-list'),
   transactions: document.getElementById('transactions'),
   resultsCount: document.getElementById('results-count'),
   txSubtitle: document.getElementById('tx-subtitle'),
@@ -107,7 +104,7 @@ function applyTheme(theme, persist = true) {
 function prepareTransactions(transactions) {
   return transactions.map((transaction) => ({
     ...transaction,
-    searchText: normalizeText(`${transaction.merchant} ${transaction.description}`),
+    searchText: normalizeText(transaction.merchant),
   }));
 }
 
@@ -129,7 +126,6 @@ function loadCache() {
           index: Number.isFinite(item.index) ? item.index : index,
           date,
           merchant: String(item.merchant ?? 'Sin comercio'),
-          description: String(item.description ?? ''),
           amount,
         };
       })
@@ -158,7 +154,6 @@ function saveCache() {
           index: transaction.index,
           date: transaction.date.toISOString(),
           merchant: transaction.merchant,
-          description: transaction.description,
           amount: transaction.amount,
         })),
       }),
@@ -242,7 +237,7 @@ function setLoading(isLoading) {
 /* --------------------------------------------------------------- filtering */
 
 function isFiltering() {
-  return Boolean(state.search || state.merchant || state.month);
+  return Boolean(state.search || state.merchant);
 }
 
 function filteredTransactions() {
@@ -250,7 +245,6 @@ function filteredTransactions() {
 
   return state.all
     .filter((transaction) => {
-      if (state.month && monthKey(transaction.date) !== state.month) return false;
       if (state.merchant && transaction.merchant !== state.merchant) return false;
       if (query && !transaction.searchText.includes(query)) return false;
       return true;
@@ -264,7 +258,6 @@ function renderAll() {
   if (!state.all.length) return;
   renderMerchantOptions();
   renderSummary();
-  renderMonths();
   renderTransactions();
   renderFilters();
   renderStatus();
@@ -274,7 +267,6 @@ function renderResults() {
   if (!state.all.length) return;
   renderMerchantOptions();
   renderSummary();
-  renderMonths();
   renderTransactions();
   renderFilters();
 }
@@ -282,69 +274,24 @@ function renderResults() {
 function renderSummary() {
   const transactions = filteredTransactions();
   const total = transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
-  const average = transactions.length ? Math.ceil(total / transactions.length) : 0;
-  const months = new Set(transactions.map((transaction) => monthKey(transaction.date))).size;
+  const spent = transactions.reduce(
+    (sum, transaction) => sum + (transaction.amount > 0 ? transaction.amount : 0),
+    0,
+  );
+  const credits = Math.abs(
+    transactions.reduce(
+      (sum, transaction) => sum + (transaction.amount < 0 ? transaction.amount : 0),
+      0,
+    ),
+  );
 
-  els.totalLabel.textContent = isFiltering() ? 'Total filtrado' : 'Total gastado';
+  els.totalLabel.textContent = isFiltering() ? 'Total filtrado' : 'Total neto';
   els.totalAmount.textContent = formatColones(total);
+  els.summarySpent.textContent = formatColones(spent);
+  els.summaryCredits.textContent = credits > 0 ? `+${formatColones(credits)}` : formatColones(0);
   els.summaryCount.textContent = formatNumber(transactions.length);
-  els.summaryAverage.textContent = formatColones(average);
-  els.summaryMonths.textContent = formatNumber(months);
   els.resultsCount.textContent = formatNumber(transactions.length);
-  els.txSubtitle.textContent = isFiltering() ? 'Resultados filtrados' : 'Todos los gastos';
-}
-
-function renderMonths() {
-  const groups = new Map();
-
-  for (const transaction of state.all) {
-    const key = monthKey(transaction.date);
-    const group = groups.get(key) ?? { key, total: 0, count: 0 };
-    group.total += transaction.amount;
-    group.count += 1;
-    groups.set(key, group);
-  }
-
-  const months = [...groups.values()].sort((a, b) => a.key.localeCompare(b.key));
-  const max = Math.max(...months.map((month) => month.total), 1);
-  const fragment = document.createDocumentFragment();
-
-  for (const month of months) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'month-row';
-    button.dataset.month = month.key;
-    button.setAttribute('aria-pressed', String(state.month === month.key));
-    button.title = `Filtrar ${formatMonthKey(month.key)}`;
-
-    const top = document.createElement('span');
-    top.className = 'month-top';
-
-    const name = document.createElement('span');
-    name.className = 'month-name';
-    name.textContent = formatMonthKey(month.key);
-
-    const amount = document.createElement('span');
-    amount.className = 'month-amount';
-    amount.textContent = formatColones(month.total);
-
-    top.append(name, amount);
-
-    const meta = document.createElement('span');
-    meta.className = 'month-meta';
-    meta.textContent = `${formatNumber(month.count)} ${month.count === 1 ? 'movimiento' : 'movimientos'}`;
-
-    const bar = document.createElement('span');
-    bar.className = 'month-bar';
-    const fill = document.createElement('span');
-    fill.style.width = `${Math.max(2, (month.total / max) * 100)}%`;
-    bar.append(fill);
-
-    button.append(top, meta, bar);
-    fragment.append(button);
-  }
-
-  els.monthsList.replaceChildren(fragment);
+  els.txSubtitle.textContent = isFiltering() ? 'Resultados filtrados' : 'Todos los movimientos';
 }
 
 function renderMerchantOptions() {
@@ -401,75 +348,110 @@ function renderTransactions() {
   hideEmpty();
   els.transactions.hidden = false;
 
-  const fragment = document.createDocumentFragment();
-  let currentDay = null;
-  let list = null;
-
-  for (const transaction of visible) {
-    const key = dayKey(transaction.date);
-
-    if (key !== currentDay) {
-      const group = document.createElement('section');
-      group.className = 'day';
-
-      const heading = document.createElement('h3');
-      heading.className = 'day-header';
-      heading.textContent = formatDay(transaction.date);
-
-      list = document.createElement('ul');
-      list.className = 'tx-list';
-
-      group.append(heading, list);
-      fragment.append(group);
-      currentDay = key;
-    }
-
-    list.append(createTransactionRow(transaction));
+  // Monthly totals are computed from the filtered set, not only the loaded page.
+  const monthTotals = new Map();
+  for (const transaction of transactions) {
+    const key = monthKey(transaction.date);
+    monthTotals.set(key, (monthTotals.get(key) ?? 0) + transaction.amount);
   }
 
-  els.transactions.replaceChildren(fragment);
+  const wrap = document.createElement('div');
+  wrap.className = 'table-wrap';
+
+  const table = document.createElement('table');
+  table.className = 'tx-table';
+
+  const caption = document.createElement('caption');
+  caption.className = 'sr-only';
+  caption.textContent = 'Movimientos';
+
+  const thead = document.createElement('thead');
+  const headRow = document.createElement('tr');
+
+  for (const [label, className] of [
+    ['Fecha', 'col-date'],
+    ['Comercio', ''],
+    ['Monto', 'col-amount'],
+  ]) {
+    const cell = document.createElement('th');
+    cell.scope = 'col';
+    if (className) cell.className = className;
+    cell.textContent = label;
+    headRow.append(cell);
+  }
+
+  thead.append(headRow);
+
+  const tbody = document.createElement('tbody');
+  let currentMonth = null;
+
+  for (const transaction of visible) {
+    const key = monthKey(transaction.date);
+
+    if (key !== currentMonth) {
+      const divider = document.createElement('tr');
+      divider.className = 'month-divider';
+
+      const cell = document.createElement('td');
+      cell.colSpan = 3;
+
+      const inner = document.createElement('div');
+      inner.className = 'month-divider-inner';
+
+      const label = document.createElement('span');
+      label.className = 'month-divider-label';
+      label.textContent = formatMonthHeading(key);
+
+      const monthTotal = monthTotals.get(key) ?? 0;
+      const total = document.createElement('span');
+      total.className = 'month-divider-total';
+      if (monthTotal < 0) total.classList.add('is-credit');
+      total.textContent = formatColones(monthTotal);
+
+      inner.append(label, total);
+      cell.append(inner);
+      divider.append(cell);
+      tbody.append(divider);
+      currentMonth = key;
+    }
+
+    tbody.append(createTransactionRow(transaction));
+  }
+
+  table.append(caption, thead, tbody);
+  wrap.append(table);
+  els.transactions.replaceChildren(wrap);
 }
 
 function createTransactionRow(transaction) {
-  const item = document.createElement('li');
-  item.className = 'tx';
+  const row = document.createElement('tr');
+  row.className = 'tx-row';
+  if (transaction.amount < 0) row.classList.add('is-credit');
 
-  const avatar = document.createElement('span');
-  avatar.className = 'avatar';
-  avatar.setAttribute('aria-hidden', 'true');
-  avatar.style.setProperty('--hue', String(hueFor(transaction.merchant)));
-  avatar.textContent = initials(transaction.merchant);
+  const dateCell = document.createElement('td');
+  dateCell.className = 'tx-date';
 
-  const main = document.createElement('div');
-  main.className = 'tx-main';
+  const day = document.createElement('span');
+  day.className = 'tx-date-day';
+  day.textContent = formatShortDate(transaction.date);
 
-  const merchant = document.createElement('p');
-  merchant.className = 'tx-merchant';
-  merchant.textContent = transaction.merchant;
-  merchant.title = transaction.merchant;
-
-  const description = document.createElement('p');
-  description.className = 'tx-desc';
-  description.textContent = transaction.description;
-  description.title = transaction.description;
-
-  main.append(merchant, description);
-
-  const side = document.createElement('div');
-  side.className = 'tx-side';
-
-  const amount = document.createElement('p');
-  amount.className = 'tx-amount';
-  if (transaction.amount < 0) amount.classList.add('is-credit');
-  amount.textContent = formatColones(transaction.amount);
-
-  const time = document.createElement('p');
+  const time = document.createElement('span');
   time.className = 'tx-time';
   time.textContent = formatTime(transaction.date);
 
-  side.append(amount, time);
-  item.append(avatar, main, side);
-  return item;
+  dateCell.append(day, time);
+
+  const merchantCell = document.createElement('td');
+  merchantCell.className = 'tx-merchant';
+  merchantCell.textContent = transaction.merchant;
+  merchantCell.title = transaction.merchant;
+
+  const amountCell = document.createElement('td');
+  amountCell.className = 'tx-amount';
+  amountCell.textContent = formatColones(transaction.amount);
+
+  row.append(dateCell, merchantCell, amountCell);
+  return row;
 }
 
 function renderFilters() {
@@ -537,7 +519,6 @@ function hideEmpty() {
 function clearFilters() {
   state.search = '';
   state.merchant = '';
-  state.month = '';
   state.visible = PAGE_SIZE;
   els.search.value = '';
   els.merchant.value = '';
@@ -572,15 +553,6 @@ function bindEvents() {
 
   els.merchant.addEventListener('change', (event) => {
     state.merchant = event.target.value;
-    state.visible = PAGE_SIZE;
-    renderResults();
-  });
-
-  els.monthsList.addEventListener('click', (event) => {
-    const button = event.target.closest('button[data-month]');
-    if (!button) return;
-
-    state.month = state.month === button.dataset.month ? '' : button.dataset.month;
     state.visible = PAGE_SIZE;
     renderResults();
   });
@@ -699,23 +671,6 @@ async function registerServiceWorker() {
   } catch (error) {
     console.warn(`[${APP_NAME}] No se pudo registrar el service worker`, error);
   }
-}
-
-/* ---------------------------------------------------------------- helpers */
-
-function hueFor(text) {
-  let hash = 0;
-  for (let index = 0; index < text.length; index += 1) {
-    hash = (hash * 31 + text.charCodeAt(index)) >>> 0;
-  }
-  return hash % 360;
-}
-
-function initials(text) {
-  const words = text.split(/\s+/).filter(Boolean);
-  const first = words[0]?.[0] ?? '?';
-  const second = words.length > 1 ? words[1][0] : '';
-  return `${first}${second}`.toUpperCase();
 }
 
 /* ------------------------------------------------------------------- boot */

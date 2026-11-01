@@ -9,16 +9,16 @@ import {
 } from '../public/assets/csv.js';
 import {
   formatColones,
+  formatMonthHeading,
   formatNumber,
   monthKey,
   normalizeText,
   roundUp,
 } from '../public/assets/format.js';
 
-const SAMPLE_CSV = `,,,
-Fecha,Comercio,Descripcion,Monto
-01/15/2026 01:05 PM,Pali,PALI MIRAFLORES HEREDIA HEREDIA CR,2252
-01/16/2026 09:30 AM,Automercado,"AUTOMERCADO, ESCAZU",15340
+const SAMPLE_CSV = `Fecha,Comercio,Monto
+11/01/2026 05:39 PM,JUNIOR ANDRES,"(15,000)"
+09/20/2026 11:40 AM,PALI CASTELLANA,"5,222"
 `;
 
 test('parseCsv handles quotes, escaped quotes, commas and CRLF', () => {
@@ -46,6 +46,7 @@ test('parseAmount reads decimal and accounting formats', () => {
   assert.equal(parseAmount('2,252.50'), 2252.5);
   assert.equal(parseAmount('12,34'), 12.34);
   assert.equal(parseAmount('(1,250)'), -1250);
+  assert.equal(parseAmount('-15,000'), -15000);
   assert.ok(Number.isNaN(parseAmount('')));
   assert.ok(Number.isNaN(parseAmount('n/a')));
 });
@@ -62,43 +63,72 @@ test('parseDate understands the published sheet format', () => {
 
 test('parseTransactions skips empty and header rows and rounds up', () => {
   const csv = `,,,
-Fecha,Comercio,Descripcion,Monto
-01/15/2026 01:05 PM,Pali,PALI MIRAFLORES HEREDIA HEREDIA CR,2252
-01/16/2026 09:30 AM,Automercado,"AUTOMERCADO, ESCAZU",15340.25
-,,,,,
+Fecha,Comercio,Monto
+01/15/2026 01:05 PM,Pali,"2,252"
+01/16/2026 09:30 AM,"Automercado, Escazu",15340.25
+,,,
 
-Fecha,Comercio,Descripcion,Monto
+Fecha,Comercio,Monto
 `;
   const transactions = parseTransactions(csv);
 
   assert.equal(transactions.length, 2);
   assert.equal(transactions[0].merchant, 'Pali');
   assert.equal(transactions[0].amount, 2252);
-  assert.equal(transactions[1].description, 'AUTOMERCADO, ESCAZU');
+  assert.equal(transactions[1].merchant, 'Automercado, Escazu');
   assert.equal(transactions[1].amount, 15341);
   assert.ok(transactions[0].date instanceof Date);
 });
 
+test('parseTransactions works without a description column', () => {
+  const [transaction] = parseTransactions(SAMPLE_CSV);
+  assert.equal(transaction.merchant, 'JUNIOR ANDRES');
+  assert.equal(transaction.amount, -15000);
+  assert.equal(transaction.description, undefined);
+});
+
+test('parseTransactions ignores an extra description column', () => {
+  const csv = `Fecha,Comercio,Descripcion,Monto
+01/15/2026 01:05 PM,Pali,PALI MIRAFLORES,"2,252"
+`;
+  const [transaction] = parseTransactions(csv);
+  assert.equal(transaction.merchant, 'Pali');
+  assert.equal(transaction.amount, 2252);
+  assert.equal(transaction.description, undefined);
+});
+
 test('parseTransactions maps by header name, not position', () => {
-  const csv = `Monto,Descripcion,Fecha,Comercio
-1234,Cafe,01/20/2026 08:00 AM,Cafeteria
+  const csv = `Monto,Fecha,Comercio
+1234,01/20/2026 08:00 AM,Cafeteria
 `;
   const [transaction] = parseTransactions(csv);
   assert.equal(transaction.merchant, 'Cafeteria');
-  assert.equal(transaction.description, 'Cafe');
   assert.equal(transaction.amount, 1234);
 });
 
 test('parseTransactions accepts a sheet without a header', () => {
-  const [transaction] = parseTransactions('01/15/2026 01:05 PM,Pali,Compra,2252\n');
+  const [transaction] = parseTransactions('01/15/2026 01:05 PM,Pali,2252\n');
   assert.equal(transaction.merchant, 'Pali');
   assert.equal(transaction.amount, 2252);
+});
+
+test('parseTransactions keeps SINPE credits as negative amounts', () => {
+  const csv = `Fecha,Comercio,Monto
+11/01/2026 05:39 PM,JUNIOR ANDRES,"(15,000)"
+11/02/2026 10:00 AM,PALI,-5222
+`;
+  const transactions = parseTransactions(csv);
+  assert.deepEqual(
+    transactions.map((transaction) => transaction.amount),
+    [-15000, -5222],
+  );
+  assert.equal(formatColones(transactions[0].amount), '-₡15,000');
 });
 
 test('parseTransactions parses the live sample', () => {
   const transactions = parseTransactions(SAMPLE_CSV);
   assert.equal(transactions.length, 2);
-  assert.equal(transactions[1].amount, 15340);
+  assert.equal(transactions[1].amount, 5222);
 });
 
 test('money is always rounded up and grouped with commas', () => {
@@ -116,6 +146,7 @@ test('money is always rounded up and grouped with commas', () => {
 test('dates produce local month keys', () => {
   assert.equal(monthKey(new Date(2026, 0, 15)), '2026-01');
   assert.equal(monthKey(new Date(2026, 11, 31)), '2026-12');
+  assert.equal(formatMonthHeading('2026-01'), 'Enero 2026');
 });
 
 test('normalizeText ignores accents and case', () => {

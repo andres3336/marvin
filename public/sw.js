@@ -10,9 +10,9 @@
  * Bump VERSION whenever the precache list changes.
  */
 
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.1.0';
 const SHELL_CACHE = `marvin-shell-${VERSION}`;
-const DATA_CACHE = 'marvin-data-v1';
+const DATA_CACHE = 'marvin-data-v2';
 const DATA_HOST = 'docs.google.com';
 
 const SHELL_ASSETS = [

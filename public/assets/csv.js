@@ -8,7 +8,6 @@ import { normalizeText, roundUp } from './format.js';
 const COLUMN_ALIASES = {
   date: ['fecha', 'date', 'fecha transaccion', 'fecha de transaccion'],
   merchant: ['comercio', 'merchant', 'establecimiento', 'negocio'],
-  description: ['descripcion', 'description', 'detalle', 'concepto'],
   amount: ['monto', 'amount', 'importe', 'total', 'monto crc'],
 };
 
@@ -195,7 +194,6 @@ function resolveColumns(row) {
   const columns = {
     date: find(COLUMN_ALIASES.date),
     merchant: find(COLUMN_ALIASES.merchant),
-    description: find(COLUMN_ALIASES.description),
     amount: find(COLUMN_ALIASES.amount),
   };
 
@@ -226,7 +224,8 @@ export function parseTransactions(text) {
   }
 
   if (!columns) {
-    columns = { date: 0, merchant: 1, description: 2, amount: 3 };
+    // No header: assume Fecha, Comercio, ..., Monto (amount is the last cell).
+    columns = { date: 0, merchant: 1, amount: -1 };
   }
 
   const transactions = [];
@@ -235,20 +234,18 @@ export function parseTransactions(text) {
     const row = rows[index];
     if (!row || row.every((cell) => !String(cell).trim())) continue;
 
+    const amountIndex = columns.amount < 0 ? row.length + columns.amount : columns.amount;
     const date = parseDate(row[columns.date]);
-    const amount = parseAmount(row[columns.amount]);
+    const amount = parseAmount(row[amountIndex]);
     if (!date || !Number.isFinite(amount)) continue;
 
-    const merchant = clean(row[columns.merchant]);
-    const description = clean(row[columns.description]) || merchant;
-    if (!merchant && !description) continue;
+    const merchant = clean(row[columns.merchant]) || 'Sin comercio';
 
     transactions.push({
       id: `${date.getTime()}-${index}`,
       index,
       date,
-      merchant: merchant || 'Sin comercio',
-      description,
+      merchant,
       amount: roundUp(amount),
     });
   }

@@ -4,8 +4,10 @@ A small, installable expense dashboard for Costa Rican colones. Vanilla JavaScri
 
 ## What it does
 
-- Fetches the published CSV and shows total spending, monthly totals and transactions.
-- Filters by month (tap a bar), merchant and free-text search.
+- Fetches the published CSV and shows the net total, spending, credits and a transaction table.
+- Groups the table by month with a divider row; no month filter.
+- Filters by merchant and free-text search.
+- Highlights credit rows in green (SINPE transfers and other negative amounts).
 - Formats every amount as whole colones with comma thousands separators, rounding up: `₡1,234,567`.
 - Works offline: the app shell is cached by a service worker, the CSV has a cache fallback and the last successful dataset is stored in `localStorage`.
 - Installable as a PWA with an offline-ready manifest and maskable icons.
@@ -28,10 +30,12 @@ The published CSV URL is configured in [`public/assets/config.js`](public/assets
 
 ```js
 export const CSV_URL =
-  'https://docs.google.com/spreadsheets/d/e/.../pub?gid=0&single=true&output=csv';
+  'https://docs.google.com/spreadsheets/d/e/.../pub?gid=462189767&single=true&output=csv';
 ```
 
-Expected columns: `Fecha`, `Comercio`, `Descripcion`, `Monto`. Column order does not matter because the header is detected by name. The date format exported by Google Sheets (`01/15/2026 01:05 PM`) is supported, along with ISO and day-first dates.
+Expected columns: `Fecha`, `Comercio`, `Monto`. A description column is not required and is ignored. Column order does not matter because the header is detected by name. The date format exported by Google Sheets (`01/15/2026 01:05 PM`) is supported, along with ISO and day-first dates.
+
+Amounts may be positive or negative. Credits can be exported as negative numbers (`-15,000`) or in accounting parentheses (`(15,000)`), and both are parsed as credits and shown in green.
 
 > **Privacy:** publishing a Google Sheet makes the CSV readable by anyone with the link. Do not publish data you want to keep private. The app itself only reads and never writes to the sheet.
 

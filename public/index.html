@@ -93,21 +93,21 @@
     <main class="page" id="contenido">
       <section class="hero" aria-labelledby="total-label">
         <div class="hero-content">
-          <p class="eyebrow" id="total-label">Total gastado</p>
+          <p class="eyebrow" id="total-label">Total neto</p>
           <p class="hero-amount" id="total-amount">₡0</p>
 
           <dl class="hero-stats">
             <div>
+              <dt>Gastos</dt>
+              <dd id="summary-spent">₡0</dd>
+            </div>
+            <div>
+              <dt>Créditos</dt>
+              <dd id="summary-credits" class="is-credit">+₡0</dd>
+            </div>
+            <div>
               <dt>Movimientos</dt>
               <dd id="summary-count">0</dd>
-            </div>
-            <div>
-              <dt>Promedio</dt>
-              <dd id="summary-average">₡0</dd>
-            </div>
-            <div>
-              <dt>Meses</dt>
-              <dd id="summary-months">0</dd>
             </div>
           </dl>
 
@@ -120,30 +120,11 @@
       </section>
 
       <div class="dashboard">
-        <section class="card months-card" aria-labelledby="months-heading">
-          <div class="card-head">
-            <div>
-              <h2 id="months-heading">Por mes</h2>
-              <p>Seleccione un mes para filtrar</p>
-            </div>
-          </div>
-          <div
-            class="months-list"
-            id="months-list"
-            role="group"
-            aria-label="Filtrar por mes"
-          >
-            <div class="skeleton skeleton-month"></div>
-            <div class="skeleton skeleton-month"></div>
-            <div class="skeleton skeleton-month"></div>
-          </div>
-        </section>
-
         <section class="card tx-card" aria-labelledby="tx-heading">
           <div class="card-head">
             <div>
               <h2 id="tx-heading">Movimientos</h2>
-              <p id="tx-subtitle">Todos los gastos</p>
+              <p id="tx-subtitle">Todos los movimientos</p>
             </div>
             <span class="count-pill" id="results-count">0</span>
           </div>
@@ -158,7 +139,7 @@
               <input
                 id="filter-search"
                 type="search"
-                placeholder="Buscar comercio o detalle…"
+                placeholder="Buscar comercio…"
                 autocomplete="off"
                 enterkeyhint="search"
               />

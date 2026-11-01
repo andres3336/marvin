@@ -31,12 +31,6 @@ export function formatColones(value) {
   return `${sign}₡${NUMBER_FORMAT.format(Math.abs(amount))}`;
 }
 
-const DAY_FORMAT = new Intl.DateTimeFormat('es-CR', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-});
-
 const TIME_FORMAT = new Intl.DateTimeFormat('es-CR', {
   hour: 'numeric',
   minute: '2-digit',
@@ -44,7 +38,7 @@ const TIME_FORMAT = new Intl.DateTimeFormat('es-CR', {
 });
 
 const MONTH_FORMAT = new Intl.DateTimeFormat('es-CR', {
-  month: 'short',
+  month: 'long',
   year: 'numeric',
 });
 
@@ -58,10 +52,6 @@ function capitalize(text) {
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
 }
 
-export function formatDay(date) {
-  return capitalize(DAY_FORMAT.format(date));
-}
-
 export function formatTime(date) {
   return TIME_FORMAT.format(date);
 }
@@ -72,18 +62,15 @@ export function monthKey(date) {
   return `${date.getFullYear()}-${month}`;
 }
 
-/** Local day key, e.g. "2026-01-15". */
-export function dayKey(date) {
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
-/** "ene 2026" for a "2026-01" key. */
-export function formatMonthKey(key) {
+/** "Enero 2026" for a "2026-01" key. */
+export function formatMonthHeading(key) {
   const [year, month] = key.split('-').map(Number);
   if (!year || !month) return key;
-  return capitalize(MONTH_FORMAT.format(new Date(year, month - 1, 1)));
+
+  const parts = MONTH_FORMAT.formatToParts(new Date(year, month - 1, 1));
+  const monthName = parts.find((part) => part.type === 'month')?.value ?? '';
+  const yearName = parts.find((part) => part.type === 'year')?.value ?? '';
+  return capitalize(`${monthName} ${yearName}`.trim());
 }
 
 export function formatShortDate(date) {
