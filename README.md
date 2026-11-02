@@ -67,9 +67,14 @@ The suite covers CSV parsing, quoted fields, header detection, date formats, amo
 
 ## Deployment
 
-Deployment is intentionally paused while the app runs from the internal server. The GitHub Pages workflow at [`.github/workflows/pages.yml`](.github/workflows/pages.yml) is manual-only for now.
+The workflow at [`.github/workflows/pages.yml`](.github/workflows/pages.yml) publishes `public/` on every push to `main`:
 
-When it is time to deploy again, restore the `push` trigger, push to `main`, and run the workflow. All paths are relative, so it works from the `/marvin/` subpath without changes. `public/.nojekyll` keeps Jekyll out of the way.
+1. In the repository, open **Settings → Pages**.
+2. Set **Source** to **GitHub Actions**.
+3. Push to `main` (or run the workflow manually).
+4. The site is available at `https://andres3336.github.io/marvin/`.
+
+All paths are relative, so it works from the `/marvin/` subpath without changes. `public/.nojekyll` keeps Jekyll out of the way.
 
 ## Project structure
 
