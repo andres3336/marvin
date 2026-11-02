@@ -187,35 +187,21 @@ svg {
 }
 
 .brand-mark {
-  position: relative;
-  display: grid;
-  place-items: center;
+  display: block;
   width: 42px;
   height: 42px;
   flex: none;
-  padding-bottom: 4px;
+  overflow: hidden;
   border-radius: 13px;
-  background: #0b4f9c;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 10px 20px -10px rgba(5, 50, 110, 0.9);
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  line-height: 1;
+  background: #ffffff;
+  box-shadow: 0 8px 18px -10px rgba(5, 50, 110, 0.55);
 }
 
-.brand-mark::after {
-  content: "";
-  position: absolute;
-  bottom: 6px;
-  left: 50%;
-  width: 16px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--gold);
-  transform: translateX(-50%);
+.brand-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .brand-text {
@@ -568,37 +554,20 @@ html[data-theme="dark"] .icon-moon {
 }
 
 .month-divider td {
-  padding: 14px 14px 8px;
-  border-top: 1px solid var(--line-strong);
-  border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--muted) 11%, var(--card));
+  padding: 7px 14px;
+  border: 0;
+  background: transparent;
 }
 
-.month-divider:first-child td {
-  border-top: 0;
-}
-
-.month-divider-label {
-  display: block;
-  overflow: hidden;
-  color: color-mix(in srgb, var(--text) 60%, var(--card));
-  font-size: 11.5px;
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
+.month-divider-line {
+  height: 1px;
+  background: var(--line-strong);
 }
 
 .tx-row td {
   height: 46px;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--line);
   vertical-align: middle;
-}
-
-.tx-row:last-child td {
-  border-bottom: 0;
 }
 
 .tx-row:hover td {
@@ -1060,7 +1029,7 @@ html[data-theme="dark"] .toast {
   }
 
   .month-divider td {
-    padding: 13px 11px 7px;
+    padding: 6px 11px;
   }
 
   .settings-dialog {
@@ -1085,12 +1054,6 @@ html[data-theme="dark"] .toast {
     width: 38px;
     height: 38px;
     border-radius: 12px;
-    font-size: 10px;
-  }
-
-  .brand-mark::after {
-    bottom: 5px;
-    width: 14px;
   }
 
   .icon-btn {

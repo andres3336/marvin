@@ -9,9 +9,8 @@ import {
 } from '../public/assets/csv.js';
 import {
   formatAmount,
-  formatTableDate,
-  formatMonthHeading,
   formatNumber,
+  formatTableDate,
   monthKey,
   normalizeText,
   roundUp,
@@ -147,7 +146,6 @@ test('money is always rounded up and grouped with commas', () => {
 test('dates produce local month keys', () => {
   assert.equal(monthKey(new Date(2026, 0, 15)), '2026-01');
   assert.equal(monthKey(new Date(2026, 11, 31)), '2026-12');
-  assert.equal(formatMonthHeading('2026-01'), 'Enero 2026');
   assert.equal(formatTableDate(new Date(2026, 4, 6)), '06-MAY');
   assert.equal(formatTableDate(new Date(2026, 8, 20)), '20-SEP');
   assert.equal(formatTableDate(new Date(2026, 0, 5)), '05-ENE');

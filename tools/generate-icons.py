@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
-"""Generate Marvin's flat BCR-blue PWA icons.
+"""Generate Marvin's PWA icons from the official BCR app artwork.
 
+Source: tools/bcr-app-icon.png
 Usage: python3 tools/generate-icons.py
-Requires Pillow and DejaVu Sans Bold.
+Requires Pillow.
 """
 
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
+SOURCE = ROOT / "tools" / "bcr-app-icon.png"
 OUT = ROOT / "public" / "assets" / "icons"
-FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 BLUE = (6, 58, 117)
-GOLD = (255, 205, 0)
 WHITE = (255, 255, 255, 255)
-SS = 4  # supersampling
+CROP = (8, 8, 504, 504)
+CORNER_RATIO = 0.151
 
 
 def rounded_mask(size, radius):
@@ -27,59 +28,45 @@ def rounded_mask(size, radius):
     return mask
 
 
-def build(size, *, radius_ratio, glyph_ratio, full_bleed, filename):
-    canvas = size * SS
-    base = Image.new("RGBA", (canvas, canvas), (*BLUE, 255))
+def load_logo():
+    source = Image.open(SOURCE).convert("RGBA").crop(CROP)
+    size = source.size[0]
+    mask = rounded_mask(size, int(size * CORNER_RATIO))
+    logo = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    logo.paste(source, (0, 0), mask)
+    return logo
 
-    if full_bleed:
-        image = base
+
+def save_resized(logo, size, filename, background=None):
+    image = logo.resize((size, size), Image.LANCZOS)
+    if background is None:
+        image.save(OUT / filename, optimize=True)
     else:
-        image = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
-        image.paste(base, (0, 0), rounded_mask(canvas, int(canvas * radius_ratio)))
+        canvas = Image.new("RGBA", (size, size), background)
+        canvas.alpha_composite(image)
+        canvas.convert("RGB").save(OUT / filename, optimize=True)
+    print(f"wrote {OUT / filename}")
 
-    draw = ImageDraw.Draw(image)
-    font = ImageFont.truetype(FONT, int(canvas * glyph_ratio))
-    text = "BCR"
-    bbox = draw.textbbox((0, 0), text, font=font)
-    text_width = bbox[2] - bbox[0]
-    text_height = bbox[3] - bbox[1]
-    x = (canvas - text_width) / 2 - bbox[0]
-    y = (canvas - text_height) / 2 - bbox[1] - canvas * 0.015
-    draw.text((x, y), text, font=font, fill=WHITE)
 
-    # Small gold underline, like a ledger rule.
-    line_width = canvas * 0.28
-    line_height = max(2, int(canvas * 0.018))
-    line_x = (canvas - line_width) / 2
-    glyph_bottom = y + bbox[1] + text_height
-    line_y = glyph_bottom + canvas * 0.045
-    draw.rounded_rectangle(
-        [line_x, line_y, line_x + line_width, line_y + line_height],
-        radius=line_height / 2,
-        fill=(*GOLD, 255),
-    )
-
-    final = image.resize((size, size), Image.LANCZOS)
-    final.save(OUT / filename, optimize=True)
+def build_maskable(logo, size, filename):
+    canvas = Image.new("RGBA", (size, size), (*BLUE, 255))
+    logo_size = round(size * 0.8)
+    artwork = logo.resize((logo_size, logo_size), Image.LANCZOS)
+    offset = (size - logo_size) // 2
+    canvas.alpha_composite(artwork, (offset, offset))
+    canvas.convert("RGB").save(OUT / filename, optimize=True)
     print(f"wrote {OUT / filename}")
 
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    build(192, radius_ratio=0.23, glyph_ratio=0.25, full_bleed=False, filename="icon-192.png")
-    build(512, radius_ratio=0.23, glyph_ratio=0.25, full_bleed=False, filename="icon-512.png")
-    build(
-        512,
-        radius_ratio=0.23,
-        glyph_ratio=0.21,
-        full_bleed=True,
-        filename="icon-maskable-512.png",
-    )
-    build(180, radius_ratio=0.0, glyph_ratio=0.23, full_bleed=True, filename="apple-touch-icon.png")
+    logo = load_logo()
 
-    favicon = Image.open(OUT / "icon-192.png").resize((32, 32), Image.LANCZOS)
-    favicon.save(OUT / "favicon-32.png", optimize=True)
-    print(f"wrote {OUT / 'favicon-32.png'}")
+    save_resized(logo, 192, "icon-192.png")
+    save_resized(logo, 512, "icon-512.png")
+    build_maskable(logo, 512, "icon-maskable-512.png")
+    save_resized(logo, 180, "apple-touch-icon.png", background=WHITE)
+    save_resized(logo, 32, "favicon-32.png", background=WHITE)
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ A small, installable BCR expense dashboard for Costa Rican colones. Vanilla Java
 ## What it does
 
 - Shows **Disponible** in a sticky header, with Gastos, SINPE and Movimientos separated below.
-- Renders a single-line transaction table grouped by month. Month dividers have no subtotals.
+- Renders a single-line transaction table grouped by month with a thin rule between groups. No month labels or subtotals.
 - Highlights credit rows in blue and labels them SINPE (negative amounts).
 - Formats every amount as whole colones without a currency symbol, with comma thousands separators: `1,234,567`.
 - Uses a compact table date format like `06-MAY`.
@@ -87,6 +87,7 @@ public/                 Static site (the only folder deployed)
     icons/              BCR-blue PWA and favicon icons
 test/                   Node test suite
 tools/generate-icons.py Icon generator (Pillow)
+tools/bcr-app-icon.png  Official BCR app artwork used to generate the icons
 server.mjs              Zero-dependency local static server
 ```
 

@@ -12,4 +12,4 @@ export const CSV_URL_KEY = 'marvin.csv-url.v1';
 export const CACHE_KEY = 'marvin.data.v3';
 export const THEME_KEY = 'marvin.theme.v1';
 export const APP_NAME = 'Marvin';
-export const APP_VERSION = '1.3.0';
+export const APP_VERSION = '1.4.0';

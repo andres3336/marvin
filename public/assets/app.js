@@ -9,7 +9,6 @@ import {
 import { parseTransactions } from './csv.js';
 import {
   formatAmount,
-  formatMonthHeading,
   formatNumber,
   formatTableDate,
   monthKey,
@@ -377,19 +376,23 @@ function renderTransactions() {
     const key = monthKey(transaction.date);
 
     if (key !== currentMonth) {
-      const divider = document.createElement('tr');
-      divider.className = 'month-divider';
+      // A single rule between month groups. No divider before the first group:
+      // the table header already provides that separation.
+      if (currentMonth !== null) {
+        const divider = document.createElement('tr');
+        divider.className = 'month-divider';
 
-      const cell = document.createElement('td');
-      cell.colSpan = 3;
+        const cell = document.createElement('td');
+        cell.colSpan = 3;
 
-      const label = document.createElement('span');
-      label.className = 'month-divider-label';
-      label.textContent = formatMonthHeading(key);
+        const line = document.createElement('div');
+        line.className = 'month-divider-line';
 
-      cell.append(label);
-      divider.append(cell);
-      tbody.append(divider);
+        cell.append(line);
+        divider.append(cell);
+        tbody.append(divider);
+      }
+
       currentMonth = key;
     }
 

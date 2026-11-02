@@ -10,7 +10,7 @@
  * Bump VERSION whenever the precache list changes.
  */
 
-const VERSION = 'v1.3.0';
+const VERSION = 'v1.4.0';
 const SHELL_CACHE = `marvin-shell-${VERSION}`;
 const DATA_CACHE = 'marvin-data-v3';
 
@@ -23,7 +23,6 @@ const SHELL_ASSETS = [
   './assets/config.js',
   './assets/csv.js',
   './assets/format.js',
-  './assets/icons/favicon.svg',
   './assets/icons/favicon-32.png',
   './assets/icons/apple-touch-icon.png',
   './assets/icons/icon-192.png',
