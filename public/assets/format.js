@@ -4,7 +4,7 @@
  * Money rules for this app:
  *  - Costa Rican colones only, never cents.
  *  - Always round up (Math.ceil).
- *  - Thousands separated with a comma, e.g. ₡1,234,567.
+ *  - Thousands separated with a comma, e.g. 1,234,567.
  */
 
 const NUMBER_FORMAT = new Intl.NumberFormat('en-US', {
@@ -24,11 +24,11 @@ export function formatNumber(value) {
   return NUMBER_FORMAT.format(roundUp(value));
 }
 
-/** Format a value as whole Costa Rican colones: ₡1,234. Negative values keep a minus sign. */
-export function formatColones(value) {
+/** Format whole colones without a currency symbol: 1,234. Negative values keep a minus sign. */
+export function formatAmount(value) {
   const amount = roundUp(value);
   const sign = amount < 0 ? '-' : '';
-  return `${sign}₡${NUMBER_FORMAT.format(Math.abs(amount))}`;
+  return `${sign}${NUMBER_FORMAT.format(Math.abs(amount))}`;
 }
 
 const TIME_FORMAT = new Intl.DateTimeFormat('es-CR', {
@@ -48,10 +48,20 @@ const SHORT_DATE_FORMAT = new Intl.DateTimeFormat('es-CR', {
   year: 'numeric',
 });
 
-const DAY_MONTH_FORMAT = new Intl.DateTimeFormat('es-CR', {
-  day: 'numeric',
-  month: 'short',
-});
+const MONTH_ABBREVIATIONS = [
+  'ENE',
+  'FEB',
+  'MAR',
+  'ABR',
+  'MAY',
+  'JUN',
+  'JUL',
+  'AGO',
+  'SEP',
+  'OCT',
+  'NOV',
+  'DIC',
+];
 
 function capitalize(text) {
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
@@ -82,9 +92,10 @@ export function formatShortDate(date) {
   return SHORT_DATE_FORMAT.format(date);
 }
 
-/** "15 ene" — the month divider already carries the year. */
-export function formatDayMonth(date) {
-  return DAY_MONTH_FORMAT.format(date);
+/** Table date format, e.g. "06-MAY". */
+export function formatTableDate(date) {
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${day}-${MONTH_ABBREVIATIONS[date.getMonth()]}`;
 }
 
 /** Lowercase, accent-insensitive text used for searching. */

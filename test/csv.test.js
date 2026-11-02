@@ -8,8 +8,8 @@ import {
   parseTransactions,
 } from '../public/assets/csv.js';
 import {
-  formatColones,
-  formatDayMonth,
+  formatAmount,
+  formatTableDate,
   formatMonthHeading,
   formatNumber,
   monthKey,
@@ -123,7 +123,7 @@ test('parseTransactions keeps SINPE credits as negative amounts', () => {
     transactions.map((transaction) => transaction.amount),
     [-15000, -5222],
   );
-  assert.equal(formatColones(transactions[0].amount), '-₡15,000');
+  assert.equal(formatAmount(transactions[0].amount), '-15,000');
 });
 
 test('parseTransactions parses the live sample', () => {
@@ -136,11 +136,11 @@ test('money is always rounded up and grouped with commas', () => {
   assert.equal(roundUp(1.01), 2);
   assert.equal(roundUp(2252), 2252);
   assert.equal(roundUp(-1.01), -1);
-  assert.equal(formatColones(2252), '₡2,252');
-  assert.equal(formatColones(1234567), '₡1,234,567');
-  assert.equal(formatColones(2252.1), '₡2,253');
-  assert.equal(formatColones(-1250), '-₡1,250');
-  assert.equal(formatColones(0), '₡0');
+  assert.equal(formatAmount(2252), '2,252');
+  assert.equal(formatAmount(1234567), '1,234,567');
+  assert.equal(formatAmount(2252.1), '2,253');
+  assert.equal(formatAmount(-1250), '-1,250');
+  assert.equal(formatAmount(0), '0');
   assert.equal(formatNumber(9876543), '9,876,543');
 });
 
@@ -148,7 +148,9 @@ test('dates produce local month keys', () => {
   assert.equal(monthKey(new Date(2026, 0, 15)), '2026-01');
   assert.equal(monthKey(new Date(2026, 11, 31)), '2026-12');
   assert.equal(formatMonthHeading('2026-01'), 'Enero 2026');
-  assert.equal(formatDayMonth(new Date(2026, 0, 15)), '15 ene');
+  assert.equal(formatTableDate(new Date(2026, 4, 6)), '06-MAY');
+  assert.equal(formatTableDate(new Date(2026, 8, 20)), '20-SEP');
+  assert.equal(formatTableDate(new Date(2026, 0, 5)), '05-ENE');
 });
 
 test('normalizeText ignores accents and case', () => {

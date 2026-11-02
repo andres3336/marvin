@@ -8,10 +8,10 @@ import {
 } from './config.js';
 import { parseTransactions } from './csv.js';
 import {
-  formatColones,
-  formatDayMonth,
+  formatAmount,
   formatMonthHeading,
   formatNumber,
+  formatTableDate,
   monthKey,
   relativeTime,
 } from './format.js';
@@ -293,9 +293,9 @@ function resetData() {
     /* storage can be blocked */
   }
 
-  els.totalAmount.textContent = formatColones(0);
-  els.summarySpent.textContent = formatColones(0);
-  els.summaryCredits.textContent = formatColones(0);
+  els.totalAmount.textContent = formatAmount(0);
+  els.summarySpent.textContent = formatAmount(0);
+  els.summaryCredits.textContent = formatAmount(0);
   els.summaryCount.textContent = '0';
   els.resultsCount.textContent = '0';
   els.loadMore.hidden = true;
@@ -327,9 +327,9 @@ function renderSummary() {
     ),
   );
 
-  els.totalAmount.textContent = formatColones(total);
-  els.summarySpent.textContent = formatColones(spent);
-  els.summaryCredits.textContent = credits > 0 ? `+${formatColones(credits)}` : formatColones(0);
+  els.totalAmount.textContent = formatAmount(total);
+  els.summarySpent.textContent = formatAmount(spent);
+  els.summaryCredits.textContent = credits > 0 ? `+${formatAmount(credits)}` : formatAmount(0);
   els.summaryCount.textContent = formatNumber(state.all.length);
   els.resultsCount.textContent = formatNumber(state.all.length);
 }
@@ -408,16 +408,32 @@ function createTransactionRow(transaction) {
 
   const dateCell = document.createElement('td');
   dateCell.className = 'tx-date';
-  dateCell.textContent = formatDayMonth(transaction.date);
+  dateCell.textContent = formatTableDate(transaction.date);
 
   const merchantCell = document.createElement('td');
   merchantCell.className = 'tx-merchant';
-  merchantCell.textContent = transaction.merchant;
-  merchantCell.title = transaction.merchant;
+
+  const merchantInner = document.createElement('div');
+  merchantInner.className = 'tx-merchant-inner';
+
+  const merchantName = document.createElement('span');
+  merchantName.className = 'tx-merchant-name';
+  merchantName.textContent = transaction.merchant;
+  merchantName.title = transaction.merchant;
+  merchantInner.append(merchantName);
+
+  if (transaction.amount < 0) {
+    const badge = document.createElement('span');
+    badge.className = 'tx-sinpe';
+    badge.textContent = 'SINPE';
+    merchantInner.append(badge);
+  }
+
+  merchantCell.append(merchantInner);
 
   const amountCell = document.createElement('td');
   amountCell.className = 'tx-amount';
-  amountCell.textContent = formatColones(transaction.amount);
+  amountCell.textContent = formatAmount(transaction.amount);
 
   row.append(dateCell, merchantCell, amountCell);
   return row;

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Marvin's PWA icons.
+"""Generate Marvin's flat BCR-blue PWA icons.
 
 Usage: python3 tools/generate-icons.py
 Requires Pillow and DejaVu Sans Bold.
@@ -7,37 +7,16 @@ Requires Pillow and DejaVu Sans Bold.
 
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "public" / "assets" / "icons"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
-TOP = (12, 80, 156)
-BOTTOM = (3, 39, 82)
+BLUE = (6, 58, 117)
 GOLD = (255, 205, 0)
 WHITE = (255, 255, 255, 255)
 SS = 4  # supersampling
-
-
-def gradient(size):
-    image = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-    for y in range(size):
-        t = y / max(1, size - 1)
-        color = tuple(round(TOP[i] + (BOTTOM[i] - TOP[i]) * t) for i in range(3))
-        draw.line([(0, y), (size, y)], fill=(*color, 255))
-    return image
-
-
-def gold_glow(size):
-    glow = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(glow)
-    draw.ellipse(
-        [size * 0.52, -size * 0.34, size * 1.22, size * 0.36],
-        fill=(*GOLD, 110),
-    )
-    return glow.filter(ImageFilter.GaussianBlur(size * 0.07))
 
 
 def rounded_mask(size, radius):
@@ -50,8 +29,7 @@ def rounded_mask(size, radius):
 
 def build(size, *, radius_ratio, glyph_ratio, full_bleed, filename):
     canvas = size * SS
-    base = gradient(canvas)
-    base.alpha_composite(gold_glow(canvas))
+    base = Image.new("RGBA", (canvas, canvas), (*BLUE, 255))
 
     if full_bleed:
         image = base

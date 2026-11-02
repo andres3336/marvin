@@ -19,10 +19,8 @@
   --gold: #f2b705;
 
   --danger: #b42318;
-  --credit: #15803d;
 
-  --hero-from: #042b57;
-  --hero-to: #0a4a91;
+  --hero-from: #063a75;
   --hero-ink: #eff6ff;
 
   --shadow: 0 24px 50px -32px rgba(5, 32, 70, 0.38);
@@ -50,10 +48,8 @@ html[data-theme="dark"] {
   --gold: #f5c542;
 
   --danger: #fca5a5;
-  --credit: #4ade80;
 
-  --hero-from: #041f3e;
-  --hero-to: #0a3a6e;
+  --hero-from: #052d59;
 
   --shadow: 0 28px 60px -34px rgba(0, 0, 0, 0.9);
 }
@@ -92,25 +88,6 @@ body {
 
 body:has(dialog[open]) {
   overflow: hidden;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      900px 520px at 10% -10%,
-      color-mix(in srgb, var(--accent) 14%, transparent),
-      transparent 62%
-    ),
-    radial-gradient(
-      820px 480px at 102% 2%,
-      color-mix(in srgb, var(--gold) 9%, transparent),
-      transparent 58%
-    );
 }
 
 h1,
@@ -218,7 +195,7 @@ svg {
   flex: none;
   padding-bottom: 4px;
   border-radius: 13px;
-  background: linear-gradient(145deg, #0b4f9c, #032a58 72%);
+  background: #0b4f9c;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
     0 10px 20px -10px rgba(5, 50, 110, 0.9);
@@ -335,7 +312,7 @@ html[data-theme="dark"] .icon-moon {
   padding: 0 16px;
   border: 0;
   border-radius: 14px;
-  background: linear-gradient(135deg, #0b4f9c, #073b78);
+  background: #0b4f9c;
   color: #ffffff;
   font-size: 13px;
   font-weight: 650;
@@ -363,7 +340,7 @@ html[data-theme="dark"] .icon-moon {
 
 .balance-bar {
   position: relative;
-  background: linear-gradient(120deg, var(--hero-from), var(--hero-to));
+  background: var(--hero-from);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
   color: var(--hero-ink);
 }
@@ -375,8 +352,7 @@ html[data-theme="dark"] .icon-moon {
   bottom: 0;
   left: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--gold), transparent 60%);
-  opacity: 0.9;
+  background: var(--gold);
 }
 
 .balance-inner {
@@ -466,7 +442,7 @@ html[data-theme="dark"] .icon-moon {
 }
 
 .stats dd.is-credit {
-  color: var(--credit);
+  color: var(--accent-ink);
 }
 
 .status {
@@ -485,8 +461,8 @@ html[data-theme="dark"] .icon-moon {
   height: 7px;
   flex: none;
   border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.16);
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .status[data-state="loading"] .status-dot,
@@ -583,7 +559,7 @@ html[data-theme="dark"] .icon-moon {
 }
 
 .tx-table thead th.col-date {
-  width: 110px;
+  width: 84px;
 }
 
 .tx-table thead th.col-amount {
@@ -595,7 +571,7 @@ html[data-theme="dark"] .icon-moon {
   padding: 14px 14px 8px;
   border-top: 1px solid var(--line-strong);
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--accent) 5%, var(--card));
+  background: color-mix(in srgb, var(--muted) 11%, var(--card));
 }
 
 .month-divider:first-child td {
@@ -605,6 +581,7 @@ html[data-theme="dark"] .icon-moon {
 .month-divider-label {
   display: block;
   overflow: hidden;
+  color: color-mix(in srgb, var(--text) 60%, var(--card));
   font-size: 11.5px;
   font-weight: 750;
   letter-spacing: 0.08em;
@@ -629,7 +606,7 @@ html[data-theme="dark"] .icon-moon {
 }
 
 .tx-date {
-  width: 110px;
+  width: 84px;
   overflow: hidden;
   font-size: 12.5px;
   font-weight: 600;
@@ -641,8 +618,30 @@ html[data-theme="dark"] .icon-moon {
   overflow: hidden;
   font-weight: 650;
   letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.tx-merchant-inner {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.tx-merchant-name {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.tx-sinpe {
+  flex: none;
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
 }
 
 .tx-amount {
@@ -658,19 +657,19 @@ html[data-theme="dark"] .icon-moon {
 }
 
 .tx-row.is-credit td {
-  background: color-mix(in srgb, var(--credit) 9%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .tx-row.is-credit:hover td {
-  background: color-mix(in srgb, var(--credit) 14%, transparent);
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
 }
 
 .tx-row.is-credit td:first-child {
-  box-shadow: inset 3px 0 0 var(--credit);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .tx-row.is-credit .tx-amount {
-  color: var(--credit);
+  color: var(--accent);
   font-weight: 750;
 }
 
@@ -787,14 +786,8 @@ html[data-theme="dark"] .icon-moon {
 
 .skeleton {
   border-radius: 12px;
-  background: linear-gradient(
-    90deg,
-    var(--line) 25%,
-    color-mix(in srgb, var(--line) 45%, transparent) 50%,
-    var(--line) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
+  background: var(--line);
+  animation: pulse 1.4s ease-in-out infinite;
 }
 
 .skeleton-row {
@@ -1045,17 +1038,25 @@ html[data-theme="dark"] .toast {
 
   .tx-table thead th.col-date,
   .tx-date {
-    width: 86px;
+    width: 74px;
   }
 
   .tx-table thead th.col-amount,
   .tx-amount {
-    width: 96px;
+    width: 94px;
+  }
+
+  .tx-sinpe {
+    font-size: 8.5px;
   }
 
   .tx-row td {
     height: 44px;
     padding: 9px 11px;
+  }
+
+  .tx-merchant {
+    font-size: 12.5px;
   }
 
   .month-divider td {
@@ -1115,7 +1116,7 @@ html[data-theme="dark"] .toast {
 
   .tx-table thead th.col-date,
   .tx-date {
-    width: 82px;
+    width: 74px;
   }
 
   .tx-table thead th.col-amount,
@@ -1147,7 +1148,7 @@ html[data-theme="dark"] .toast {
 
   .tx-table thead th.col-date,
   .tx-date {
-    width: 76px;
+    width: 68px;
   }
 
   .tx-table thead th.col-amount,
@@ -1173,15 +1174,6 @@ html[data-theme="dark"] .toast {
   }
   50% {
     opacity: 0.35;
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
   }
 }
 

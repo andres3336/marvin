@@ -6,11 +6,13 @@ A small, installable BCR expense dashboard for Costa Rican colones. Vanilla Java
 
 - Shows **Disponible** in a sticky header, with Gastos, SINPE and Movimientos separated below.
 - Renders a single-line transaction table grouped by month. Month dividers have no subtotals.
-- Highlights credit rows in green (SINPE transfers and other negative amounts).
-- Formats every amount as whole colones with comma thousands separators, rounding up: `₡1,234,567`.
+- Highlights credit rows in blue and labels them SINPE (negative amounts).
+- Formats every amount as whole colones without a currency symbol, with comma thousands separators: `1,234,567`.
+- Uses a compact table date format like `06-MAY`.
 - Lets you change the CSV source from the **Ajustes** panel; the URL is stored on the device.
 - Works offline: the app shell is cached by a service worker, the CSV has a cache fallback and the last successful dataset is stored in `localStorage`.
-- Installable as a PWA with BCR-blue icons and maskable artwork.
+- Installable as a PWA with flat BCR-blue icons and maskable artwork.
+- Flat BCR-blue palette with gold accents and no gradients.
 - Follows the system light/dark theme, with a manual toggle.
 
 ## Money rules
@@ -35,7 +37,7 @@ export const CSV_URL =
 
 Expected columns: `Fecha`, `Comercio`, `Monto`. A description column is not required and is ignored. Column order does not matter because the header is detected by name. The date format exported by Google Sheets (`01/15/2026 01:05 PM`) is supported, along with ISO and day-first dates.
 
-Amounts may be positive or negative. Credits can be exported as negative numbers (`-15,000`) or in accounting parentheses (`(15,000)`), and both are parsed as credits and shown in green. The **Disponible** figure is the net sum: gastos minus SINPE credits.
+Amounts may be positive or negative. Credits can be exported as negative numbers (`-15,000`) or in accounting parentheses (`(15,000)`), and both are parsed as credits and tagged SINPE. The **Disponible** figure is the net sum: gastos minus SINPE credits.
 
 > **Privacy:** publishing a Google Sheet makes the CSV readable by anyone with the link. Do not publish data you want to keep private. The app itself only reads and never writes to the sheet.
 
