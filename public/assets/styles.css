@@ -1025,7 +1025,7 @@ html[data-theme="dark"] .toast {
   }
 
   .tx-merchant {
-    font-size: 12.5px;
+    font-size: 12px;
   }
 
   .month-divider td {
@@ -1079,12 +1079,12 @@ html[data-theme="dark"] .toast {
 
   .tx-table thead th.col-date,
   .tx-date {
-    width: 74px;
+    width: 70px;
   }
 
   .tx-table thead th.col-amount,
   .tx-amount {
-    width: 90px;
+    width: 86px;
   }
 
   .tx-date {

@@ -1,6 +1,6 @@
 {
   "name": "marvin",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "description": "PWA de gastos en colones costarricenses, servida estáticamente desde GitHub Pages.",
   "type": "module",

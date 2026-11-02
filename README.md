@@ -10,6 +10,7 @@ A small, installable BCR expense dashboard for Costa Rican colones. Vanilla Java
 - Formats every amount as whole colones without a currency symbol, with comma thousands separators: `1,234,567`.
 - Uses a compact table date format like `06-MAY`.
 - Lets you change the CSV source from the **Ajustes** panel; the URL is stored on the device.
+- The refresh button clears the cached CSV, forces a fresh request and refreshes the totals.
 - Works offline: the app shell is cached by a service worker, the CSV has a cache fallback and the last successful dataset is stored in `localStorage`.
 - Installable as a PWA with flat BCR-blue icons and maskable artwork.
 - Flat BCR-blue palette with gold accents and no gradients.
@@ -37,7 +38,9 @@ export const CSV_URL =
 
 Expected columns: `Fecha`, `Comercio`, `Monto`. A description column is not required and is ignored. Column order does not matter because the header is detected by name. The date format exported by Google Sheets (`01/15/2026 01:05 PM`) is supported, along with ISO and day-first dates.
 
-Amounts may be positive or negative. Credits can be exported as negative numbers (`-15,000`) or in accounting parentheses (`(15,000)`), and both are parsed as credits and tagged SINPE. The **Disponible** figure is the net sum: gastos minus SINPE credits.
+Keep the source `Monto` positive. A row whose `Comercio` contains **SINPE** is treated as a credit; every other row is treated as spending. Negative amounts and accounting parentheses (`(15,000)`) are still accepted as legacy credits.
+
+The table displays SINPE credits as positive (blue) and spending as negative. The **Disponible** figure is the signed net: SINPE credits minus gastos, so it can be negative when spending exceeds credits. **Gastos** and **SINPE** show the positive totals.
 
 > **Privacy:** publishing a Google Sheet makes the CSV readable by anyone with the link. Do not publish data you want to keep private. The app itself only reads and never writes to the sheet.
 

@@ -155,6 +155,7 @@ function loadCache() {
           date,
           merchant: String(item.merchant ?? 'Sin comercio'),
           amount,
+          isCredit: Boolean(item.isCredit) || amount > 0,
         };
       })
       .filter(Boolean);
@@ -184,6 +185,7 @@ function saveCache() {
           date: transaction.date.toISOString(),
           merchant: transaction.merchant,
           amount: transaction.amount,
+          isCredit: transaction.isCredit,
         })),
       }),
     );
@@ -194,7 +196,22 @@ function saveCache() {
 
 /* ------------------------------------------------------------------- data */
 
-async function loadData({ announce = false } = {}) {
+async function clearDataCaches() {
+  if (!('caches' in window)) return;
+
+  try {
+    const keys = await caches.keys();
+    await Promise.all(
+      keys
+        .filter((key) => key.startsWith('marvin-data-'))
+        .map((key) => caches.delete(key)),
+    );
+  } catch {
+    /* Cache API can be unavailable */
+  }
+}
+
+async function loadData({ announce = false, forceFresh = false } = {}) {
   const token = ++requestToken;
   currentController?.abort();
 
@@ -214,7 +231,10 @@ async function loadData({ announce = false } = {}) {
   }, 15_000);
 
   try {
-    const response = await fetch(requestedUrl, {
+    const fetchUrl = new URL(requestedUrl);
+    if (forceFresh) fetchUrl.searchParams.set('_marvin', String(Date.now()));
+
+    const response = await fetch(fetchUrl.toString(), {
       cache: 'no-store',
       mode: 'cors',
       signal: controller.signal,
@@ -316,14 +336,12 @@ function renderAll() {
 function renderSummary() {
   const total = state.all.reduce((sum, transaction) => sum + transaction.amount, 0);
   const spent = state.all.reduce(
-    (sum, transaction) => sum + (transaction.amount > 0 ? transaction.amount : 0),
+    (sum, transaction) => sum + (transaction.isCredit ? 0 : Math.abs(transaction.amount)),
     0,
   );
-  const credits = Math.abs(
-    state.all.reduce(
-      (sum, transaction) => sum + (transaction.amount < 0 ? transaction.amount : 0),
-      0,
-    ),
+  const credits = state.all.reduce(
+    (sum, transaction) => sum + (transaction.isCredit ? transaction.amount : 0),
+    0,
   );
 
   els.totalAmount.textContent = formatAmount(total);
@@ -407,7 +425,7 @@ function renderTransactions() {
 function createTransactionRow(transaction) {
   const row = document.createElement('tr');
   row.className = 'tx-row';
-  if (transaction.amount < 0) row.classList.add('is-credit');
+  if (transaction.isCredit) row.classList.add('is-credit');
 
   const dateCell = document.createElement('td');
   dateCell.className = 'tx-date';
@@ -425,7 +443,7 @@ function createTransactionRow(transaction) {
   merchantName.title = transaction.merchant;
   merchantInner.append(merchantName);
 
-  if (transaction.amount < 0) {
+  if (transaction.isCredit && !/sinpe/i.test(transaction.merchant)) {
     const badge = document.createElement('span');
     badge.className = 'tx-sinpe';
     badge.textContent = 'SINPE';
@@ -436,7 +454,9 @@ function createTransactionRow(transaction) {
 
   const amountCell = document.createElement('td');
   amountCell.className = 'tx-amount';
-  amountCell.textContent = formatAmount(transaction.amount);
+  amountCell.textContent = transaction.isCredit
+    ? `+${formatAmount(transaction.amount)}`
+    : formatAmount(transaction.amount);
 
   row.append(dateCell, merchantCell, amountCell);
   return row;
@@ -554,7 +574,7 @@ function saveSettings(event) {
   closeSettings();
   resetData();
   toast('Fuente actualizada. Cargando datos…');
-  loadData({ announce: false });
+  loadData({ announce: false, forceFresh: true });
 }
 
 /* ------------------------------------------------------------------ events */
@@ -572,7 +592,10 @@ function bindEvents() {
     applyTheme(next);
   });
 
-  els.refreshBtn.addEventListener('click', () => loadData({ announce: true }));
+  els.refreshBtn.addEventListener('click', async () => {
+    await clearDataCaches();
+    loadData({ announce: true, forceFresh: true });
+  });
 
   els.settingsBtn.addEventListener('click', openSettings);
   els.settingsClose.addEventListener('click', closeSettings);
@@ -594,7 +617,10 @@ function bindEvents() {
     renderTransactions();
   });
 
-  els.emptyAction.addEventListener('click', () => loadData({ announce: true }));
+  els.emptyAction.addEventListener('click', async () => {
+    await clearDataCaches();
+    loadData({ announce: true, forceFresh: true });
+  });
 
   window.addEventListener('online', () => {
     state.online = true;
@@ -669,6 +695,19 @@ function setupInstallButton() {
   });
 }
 
+function setupServiceWorkerReload() {
+  if (!('serviceWorker' in navigator)) return;
+
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let reloading = false;
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloading) return;
+    reloading = true;
+    window.location.reload();
+  });
+}
+
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
 
@@ -679,21 +718,6 @@ async function registerServiceWorker() {
     );
 
     if (!registration) return;
-
-    if (registration.waiting) {
-      toast('Hay una nueva versión disponible. Recargue para actualizarla.', 7000);
-    }
-
-    registration.addEventListener('updatefound', () => {
-      const worker = registration.installing;
-      if (!worker) return;
-
-      worker.addEventListener('statechange', () => {
-        if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-          toast('Hay una nueva versión disponible. Recargue para actualizarla.', 7000);
-        }
-      });
-    });
   } catch (error) {
     console.warn(`[${APP_NAME}] No se pudo registrar el service worker`, error);
   }
@@ -712,6 +736,7 @@ function init() {
   fillVersion();
   bindEvents();
   setupInstallButton();
+  setupServiceWorkerReload();
   registerServiceWorker();
 
   if (loadCache()) renderAll();

@@ -236,17 +236,25 @@ export function parseTransactions(text) {
 
     const amountIndex = columns.amount < 0 ? row.length + columns.amount : columns.amount;
     const date = parseDate(row[columns.date]);
-    const amount = parseAmount(row[amountIndex]);
-    if (!date || !Number.isFinite(amount)) continue;
+    const rawAmount = parseAmount(row[amountIndex]);
+    if (!date || !Number.isFinite(rawAmount)) continue;
 
     const merchant = clean(row[columns.merchant]) || 'Sin comercio';
+
+    // The sheet now uses positive amounts only. SINPE rows are credits;
+    // everything else is spending. A negative amount is treated as a legacy
+    // credit, so existing sheets keep working.
+    const isCredit = rawAmount < 0 || normalizeText(merchant).includes('sinpe');
+    const magnitude = roundUp(Math.abs(rawAmount));
+    const amount = isCredit ? magnitude : -magnitude;
 
     transactions.push({
       id: `${date.getTime()}-${index}`,
       index,
       date,
       merchant,
-      amount: roundUp(amount),
+      amount,
+      isCredit,
     });
   }
 

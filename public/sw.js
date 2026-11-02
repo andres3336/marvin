@@ -10,7 +10,7 @@
  * Bump VERSION whenever the precache list changes.
  */
 
-const VERSION = 'v1.4.0';
+const VERSION = 'v1.5.0';
 const SHELL_CACHE = `marvin-shell-${VERSION}`;
 const DATA_CACHE = 'marvin-data-v3';
 
@@ -96,17 +96,24 @@ async function handleNavigation(request) {
   }
 }
 
+function dataCacheKey(request) {
+  const url = new URL(request.url);
+  url.searchParams.delete('_marvin');
+  return url.toString();
+}
+
 async function handleData(request) {
   const cache = await caches.open(DATA_CACHE);
+  const cacheKey = dataCacheKey(request);
 
   try {
     const response = await fetchWithTimeout(request, 12_000);
     if (response.ok) {
-      await cache.put(request, response.clone());
+      await cache.put(cacheKey, response.clone());
     }
     return response;
   } catch {
-    const cached = await cache.match(request);
+    const cached = await cache.match(cacheKey);
     if (cached) {
       // Let the page know this response came from the offline cache.
       const headers = new Headers(cached.headers);
@@ -156,5 +163,8 @@ function fetchWithTimeout(request, milliseconds) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), milliseconds);
 
-  return fetch(request, { signal: controller.signal }).finally(() => clearTimeout(timer));
+  return fetch(request, {
+    cache: 'no-store',
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timer));
 }

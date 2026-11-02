@@ -17,7 +17,7 @@ import {
 } from '../public/assets/format.js';
 
 const SAMPLE_CSV = `Fecha,Comercio,Monto
-11/01/2026 05:39 PM,JUNIOR ANDRES,"(15,000)"
+11/01/2026 05:39 PM,SINPE JUNIOR ANDRES,"7,053"
 09/20/2026 11:40 AM,PALI CASTELLANA,"5,222"
 `;
 
@@ -74,16 +74,18 @@ Fecha,Comercio,Monto
 
   assert.equal(transactions.length, 2);
   assert.equal(transactions[0].merchant, 'Pali');
-  assert.equal(transactions[0].amount, 2252);
+  assert.equal(transactions[0].amount, -2252);
+  assert.equal(transactions[0].isCredit, false);
   assert.equal(transactions[1].merchant, 'Automercado, Escazu');
-  assert.equal(transactions[1].amount, 15341);
+  assert.equal(transactions[1].amount, -15341);
   assert.ok(transactions[0].date instanceof Date);
 });
 
 test('parseTransactions works without a description column', () => {
   const [transaction] = parseTransactions(SAMPLE_CSV);
-  assert.equal(transaction.merchant, 'JUNIOR ANDRES');
-  assert.equal(transaction.amount, -15000);
+  assert.equal(transaction.merchant, 'SINPE JUNIOR ANDRES');
+  assert.equal(transaction.amount, 7053);
+  assert.equal(transaction.isCredit, true);
   assert.equal(transaction.description, undefined);
 });
 
@@ -93,7 +95,7 @@ test('parseTransactions ignores an extra description column', () => {
 `;
   const [transaction] = parseTransactions(csv);
   assert.equal(transaction.merchant, 'Pali');
-  assert.equal(transaction.amount, 2252);
+  assert.equal(transaction.amount, -2252);
   assert.equal(transaction.description, undefined);
 });
 
@@ -103,32 +105,42 @@ test('parseTransactions maps by header name, not position', () => {
 `;
   const [transaction] = parseTransactions(csv);
   assert.equal(transaction.merchant, 'Cafeteria');
-  assert.equal(transaction.amount, 1234);
+  assert.equal(transaction.amount, -1234);
 });
 
 test('parseTransactions accepts a sheet without a header', () => {
   const [transaction] = parseTransactions('01/15/2026 01:05 PM,Pali,2252\n');
   assert.equal(transaction.merchant, 'Pali');
-  assert.equal(transaction.amount, 2252);
+  assert.equal(transaction.amount, -2252);
 });
 
-test('parseTransactions keeps SINPE credits as negative amounts', () => {
+test('SINPE rows are credits and the rest are expenses', () => {
   const csv = `Fecha,Comercio,Monto
-11/01/2026 05:39 PM,JUNIOR ANDRES,"(15,000)"
-11/02/2026 10:00 AM,PALI,-5222
+11/01/2026 05:39 PM,SINPE JUNIOR ANDRES,"7,053"
+11/02/2026 10:00 AM,PALI,5222
+11/03/2026 10:00 AM,sinpe familiar,"1,000.20"
+11/04/2026 10:00 AM,JUNIOR ANDRES,"(15,000)"
 `;
   const transactions = parseTransactions(csv);
+
   assert.deepEqual(
     transactions.map((transaction) => transaction.amount),
-    [-15000, -5222],
+    [7053, -5222, 1001, 15000],
   );
-  assert.equal(formatAmount(transactions[0].amount), '-15,000');
+  assert.deepEqual(
+    transactions.map((transaction) => transaction.isCredit),
+    [true, false, true, true],
+  );
+  assert.equal(formatAmount(transactions[0].amount), '7,053');
+  assert.equal(formatAmount(transactions[1].amount), '-5,222');
 });
 
 test('parseTransactions parses the live sample', () => {
   const transactions = parseTransactions(SAMPLE_CSV);
   assert.equal(transactions.length, 2);
-  assert.equal(transactions[1].amount, 5222);
+  assert.equal(transactions[0].amount, 7053);
+  assert.equal(transactions[0].isCredit, true);
+  assert.equal(transactions[1].amount, -5222);
 });
 
 test('money is always rounded up and grouped with commas', () => {
